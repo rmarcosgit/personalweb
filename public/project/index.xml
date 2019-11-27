@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Projects on Marcos Rodrigues</title>
+    <link>/project/</link>
+    <description>Recent content in Projects on Marcos Rodrigues</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Wed, 27 Apr 2016 00:00:00 +0200</lastBuildDate>
+    
+	<atom:link href="/project/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>CLICES</title>
+      <link>/project/clices/</link>
+      <pubDate>Wed, 27 Apr 2016 00:00:00 +0200</pubDate>
+      
+      <guid>/project/clices/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>CLIMARK</title>
+      <link>/project/climark/</link>
+      <pubDate>Wed, 27 Apr 2016 00:00:00 +0200</pubDate>
+      
+      <guid>/project/climark/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>FIREGLOBE</title>
+      <link>/project/fireglobe/</link>
+      <pubDate>Wed, 27 Apr 2016 00:00:00 +0200</pubDate>
+      
+      <guid>/project/fireglobe/</guid>
+      <description>PROJECT GOAL The Fireglobe project aims to generate a system to predict and evaluate the risk of forest fires that can be applied at both the NATIONAL and GLOBAL scales through the use of remote sensing imagery and geographic information systems.</description>
+    </item>
+    
+    <item>
+      <title>FIREMAP</title>
+      <link>/project/firemap/</link>
+      <pubDate>Wed, 27 Apr 2016 00:00:00 +0200</pubDate>
+      
+      <guid>/project/firemap/</guid>
+      <description>Análisis integrado del riesgo de incendios forestales mediante Teledetección y Sistemas de Información Geográfica</description>
+    </item>
+    
+    <item>
+      <title>IMAGINE</title>
+      <link>/project/imagine/</link>
+      <pubDate>Wed, 27 Apr 2016 00:00:00 +0200</pubDate>
+      
+      <guid>/project/imagine/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>PYRORAMA</title>
+      <link>/project/pyrorama/</link>
+      <pubDate>Wed, 27 Apr 2016 00:00:00 +0200</pubDate>
+      
+      <guid>/project/pyrorama/</guid>
+      <description>Modelado de escenarios futuros de riesgo de incendios y cambios en la ocupación del suelo a escala nacional</description>
+    </item>
+    
+    <item>
+      <title>SERGISAT</title>
+      <link>/project/sergisat/</link>
+      <pubDate>Wed, 27 Apr 2016 00:00:00 +0200</pubDate>
+      
+      <guid>/project/sergisat/</guid>
+      <description>PROJECT GOAL Build a model to estimate the post-fire regeneration after large fire. The aim is to analyze different patterns of regeneration at different levels of burn severity, using burned areas with comparable biophysical characteristics as study cases.</description>
+    </item>
+    
+  </channel>
+</rss>

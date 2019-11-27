@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Miquel Febrer-Martı́nez on Marcos Rodrigues</title>
+    <link>/authors/miquel-febrer-mart%C4%B1%CC%81nez/</link>
+    <description>Recent content in Miquel Febrer-Martı́nez on Marcos Rodrigues</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Mon, 01 Jan 2018 00:00:00 +0100</lastBuildDate>
+    
+	<atom:link href="/authors/miquel-febrer-mart%C4%B1%CC%81nez/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Accuracy assessment of the latest generations of MODIS burned area products for mapping fire scars on a regional scale over Campos Amazônicos Savanna Enclave (Brazilian Amazon)</title>
+      <link>/publication/alves-2018-accuracy/</link>
+      <pubDate>Mon, 01 Jan 2018 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/alves-2018-accuracy/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

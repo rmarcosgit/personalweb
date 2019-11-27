@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Antonio Gómez on Marcos Rodrigues</title>
+    <link>/authors/antonio-g%C3%B3mez/</link>
+    <description>Recent content in Antonio Gómez on Marcos Rodrigues</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sat, 01 Jan 2011 00:00:00 +0100</lastBuildDate>
+    
+	<atom:link href="/authors/antonio-g%C3%B3mez/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>The technical potential of first-generation biofuels obtained from energy crops in Spain</title>
+      <link>/publication/gomez-2011-technical/</link>
+      <pubDate>Sat, 01 Jan 2011 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/gomez-2011-technical/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>An estimation of the energy potential of agro-industrial residues in Spain</title>
+      <link>/publication/gomez-2010-estimation/</link>
+      <pubDate>Fri, 01 Jan 2010 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/gomez-2010-estimation/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Potential and cost of electricity generation from human and animal waste in Spain</title>
+      <link>/publication/gomez-2010-potential/</link>
+      <pubDate>Fri, 01 Jan 2010 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/gomez-2010-potential/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

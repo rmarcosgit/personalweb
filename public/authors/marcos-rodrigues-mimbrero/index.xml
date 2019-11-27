@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Marcos Rodrigues Mimbrero on Marcos Rodrigues</title>
+    <link>/authors/marcos-rodrigues-mimbrero/</link>
+    <description>Recent content in Marcos Rodrigues Mimbrero on Marcos Rodrigues</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Tue, 01 Jan 2019 00:00:00 +0100</lastBuildDate>
+    
+	<atom:link href="/authors/marcos-rodrigues-mimbrero/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Modelling temporal variation of fire-occurrence towards the dynamic prediction of human wildfire ignition danger in northeast Spain</title>
+      <link>/publication/martin-2019-modelling/</link>
+      <pubDate>Tue, 01 Jan 2019 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/martin-2019-modelling/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Accuracy assessment of the latest generations of MODIS burned area products for mapping fire scars on a regional scale over Campos Amazônicos Savanna Enclave (Brazilian Amazon)</title>
+      <link>/publication/alves-2018-accuracy/</link>
+      <pubDate>Mon, 01 Jan 2018 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/alves-2018-accuracy/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>The role of short-term weather conditions in temporal dynamics of fire regime features in mainland Spain</title>
+      <link>/publication/jimenez-2018-role/</link>
+      <pubDate>Mon, 01 Jan 2018 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/jimenez-2018-role/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Community vulnerability to hazards: Introducing local expert knowledge into the equation</title>
+      <link>/publication/martin-2017-community/</link>
+      <pubDate>Sun, 01 Jan 2017 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/martin-2017-community/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Understanding wildfires in mainland Spain. A comprehensive analysis of fire regime features in a climate-human context</title>
+      <link>/publication/jimenez-2017-understanding/</link>
+      <pubDate>Sun, 01 Jan 2017 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/jimenez-2017-understanding/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Analysis of the relationship between land surface temperature and wildfire severity in a series of Landsat images</title>
+      <link>/publication/vlassova-2014-analysis/</link>
+      <pubDate>Wed, 01 Jan 2014 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/vlassova-2014-analysis/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

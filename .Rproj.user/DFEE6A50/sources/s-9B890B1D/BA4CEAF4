@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1550657677331.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "BA4CEAF4",
+    "lastKnownWriteTime" : 1567662327,
+    "last_content_update" : 1567662327,
+    "path" : "E:/Estancia_IDL/exploratory.R",
+    "project_path" : null,
+    "properties" : {
+        "cursorPosition" : "823,0",
+        "scrollLine" : "0"
+    },
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

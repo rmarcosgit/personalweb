@@ -1,0 +1,940 @@
+library(randomForest)
+library(rgdal)
+library(raster)
+library(plotmo)
+library(dismo)
+library(rgeos)
+
+getData <-  function(x,dataset,fireData){
+  
+  fire <- fireData[which(row.names(fireData) %in% x),]
+  date <- as.Date(fire$DATE)
+  #name <- paste("X",paste(fires.cuad[1,]$YEAR,fires.cuad[1,]$MONTH,fires.cuad[1,]$DAY,"12.50.39",sep="."),sep="")
+  
+  return(extract(dataset[[floor(difftime(date,"1978-12-31"))]],
+                 fire[,16:17]))
+}
+
+q50 <- function(x){
+  return(quantile(x,0.50))
+}
+
+q75 <- function(x){
+  return(quantile(x,0.75))
+}
+
+q85 <- function(x){
+  return(quantile(x,0.85))
+}
+
+q90 <- function(x){
+  return(quantile(x,0.90))
+}
+
+q95 <- function(x){
+  return(quantile(x,0.95))
+}
+
+setwd("E:/articulo_fire_wind_temp/")
+#setwd("/media/rmarcos/TOSHIBA EXT/articulo_fire_wind_temp/")
+
+list.nc.wind <- list.files('nc/', pattern = "windspeed", full.names = TRUE)
+#list.nc.wdir <- list.files('nc/', pattern = "degree", full.names = TRUE)
+list.nc.temp <- list.files('nc/', pattern = "temp", full.names = TRUE)
+
+wind.speed <- brick(list.nc.wind[1])
+#wind.direc <- brick(list.nc.wdir[1])
+
+temperature.1 <- brick(list.nc.temp[1])
+temperature.2 <- brick(list.nc.temp[2])
+temperature.3 <- brick(list.nc.temp[3])
+temperature.4 <- brick(list.nc.temp[4])
+temperature <- addLayer(temperature.1,
+                        temperature.2,
+                        temperature.3,
+                        temperature.4)
+
+q50.temp <- calc(temperature, q50)
+q75.temp <- calc(temperature, q75)
+q85.temp <- calc(temperature, q85)
+q90.temp <- calc(temperature, q90)
+q95.temp <- calc(temperature, q95)
+
+q50.wind <- calc(wind.speed, q50)
+q75.wind <- calc(wind.speed, q75)
+q85.wind <- calc(wind.speed, q85)
+q90.wind <- calc(wind.speed, q90)
+q95.wind <- calc(wind.speed, q95)
+
+quartiles <- brick(q50.temp,q75.temp,q85.temp,q90.temp,q95.temp,
+                   q50.wind,q75.wind,q85.wind,q90.wind,q95.wind)
+
+# q85.wind <- calc(wind.speed, q85)
+
+setwd('E:/articulo_first_attack/')
+#setwd('/media/rmarcos/TOSHIBA EXT/articulo_first_attack/')
+
+#fires.pt <- readOGR('fires_1ha_barcelona.shp')
+#fires.pt <- readOGR('fires_barcelona.shp')
+fires.pt <- readOGR('../CLIMARK/ignitions_1998-2015.shp')
+fires.pt$FECHA <- as.Date(fires.pt$DATE)
+fires.day <- aggregate(IDPIF ~ FECHA, fires.pt@data, FUN = length)
+fires.pt <- merge(fires.pt, fires.day, by = "FECHA")
+names(fires.pt)[ncol(fires.pt)] <- "NFIRES"
+
+#fires.pt <- fires.pt[fires.pt$AREA>1,]
+fires.pt.wgs84 <- spTransform(fires.pt,CRSobj = "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84")
+#prov <- readOGR('barcelona.shp')
+
+list.rasters <- list.files('catalunya',pattern = '\\.tif$',full.names = TRUE)
+
+lower.limit <- 10
+upper.limit <- 50
+
+# vdep <- data.frame(rbind(fires.pt[fires.pt$AREA<lower.limit,]@coords,
+#               fires.pt[fires.pt$AREA>upper.limit,]@coords))
+
+vdep.success <- fires.pt[fires.pt$AREA<lower.limit,]
+vdep.fail <- fires.pt[fires.pt$AREA>lower.limit,]
+
+# s <- sample(1:nrow(vdep.succes),nrow(vdep.fail))
+# vdep.succes <- vdep.succes[s,]
+
+vdep <- data.frame(rbind(vdep.success@coords,vdep.fail@coords))
+vdep$fire <- c(rep(1,nrow(vdep.success)),rep(0,nrow(vdep.fail)))
+# vdep$fire <- c(rep(1,nrow(fires.pt[fires.pt$AREA<lower.limit,]@coords)),
+#                rep(0,nrow(fires.pt[fires.pt$AREA>upper.limit,]@coords)))
+vdep$NFIRE <- c(vdep.success$NFIRES,vdep.fail$NFIRES)
+
+vindep <- list()
+layer <- 1
+
+r <- raster(list.rasters[1])
+vindep[[layer]] <- extract(r,vdep[,1:2])
+
+for(f in 2:length(list.rasters)){
+  
+  layer <- layer + 1
+  r <- raster(list.rasters[f])
+  vindep[[layer]]  <- extract(r,vdep[,1:2])
+  
+}
+
+vdep.success <- fires.pt.wgs84[fires.pt.wgs84$AREA<lower.limit,]
+vdep.fail <- fires.pt.wgs84[fires.pt.wgs84$AREA>lower.limit,]
+
+#s <- sample(1:nrow(vdep.succes),nrow(vdep.fail))
+#vdep.success <- vdep.success[s,]
+fires <- data.frame(rbind(vdep.success,vdep.fail))
+
+#Extraer d?a y mes del campo fecha
+# fires <- rbind(
+#                cbind(fires.pt.wgs84[fires.pt.wgs84$AREA<lower.limit,]@data,
+#                fires.pt.wgs84[fires.pt.wgs84$AREA<lower.limit,]@coords),
+#                cbind(fires.pt.wgs84[fires.pt.wgs84$AREA>upper.limit,]@data,
+#                      fires.pt.wgs84[fires.pt.wgs84$AREA>upper.limit,]@coords)
+#               )
+
+
+# getData(1,temperature,fires)
+
+fires.wspeed <- lapply(rownames(fires), FUN= function(x)  getData(x,wind.speed,fires))
+#fires.wdirec <- lapply(rownames(fires.cuad), FUN= function(x)  getData(x,wind.direc,fires.cuad))
+fires.temp <- lapply(rownames(fires), FUN= function(x)  getData(x,temperature,fires))
+fires.temp.q85 <- extract(q85.temp,fires[,c(16:17)])
+fires.wind.q85 <- extract(q85.temp,fires[,c(16:17)])
+
+fires.quartiles <- data.frame(extract(quartiles,fires[,16:17]))
+names(fires.quartiles) <- c('q50.temp','q75.temp','q85.temp','q90.temp','q95.temp',
+                            'q50.wind','q75.wind','q85.wind','q90.wind','q95.wind')
+
+fires.quartiles$BAREA <- fires$AREA
+fires.quartiles$MONTH <- fires$MONTH
+fires.quartiles$TEMP <- unlist(fires.temp)
+fires.quartiles$WIND <- unlist(fires.wspeed)
+fires.quartiles$DATE <- fires$DATE
+
+
+fires.quartiles$NFIRES <- fires$NFIRES
+
+sum(na.omit(fires.quartiles[fires.quartiles$WIND > fires.quartiles$q85.wind &
+                          fires.quartiles$TEMP > fires.quartiles$q85.temp &
+                            fires.quartiles$NFIRES > 9,])$BAREA)
+
+hist(na.omit(fires.quartiles[fires.quartiles$WIND > fires.quartiles$q85.wind &
+                          fires.quartiles$TEMP > fires.quartiles$q85.temp,])$NFIRES)
+
+fires.quartiles <- na.omit(fires.quartiles)
+fires.quartiles <- na.omit(fires.quartiles[fires.quartiles$BAREA>1,])
+
+fires.quartiles$BAREA.f <- factor(
+  cut(fires.quartiles$BAREA,c(0,10,Inf)),
+  labels = c('Successfully suppressed','Escaped'))
+
+p.meteo <- ggplot(fires.quartiles, aes(x = TEMP-273, y = WIND, z =BAREA)) +
+  geom_hex(bins = 20,color = "gray20") +
+  #stat_summary_hex(bins = 20,color = "gray20") +
+  scale_fill_viridis(name="Fire counts", breaks = c(5, 10, 20, 28)) +
+  #scale_fill_viridis(name="Burned area (Ha)", breaks = c(500 ,1500, 3000, 5000)) +
+  scale_y_continuous(name = "Wind speed (m/s)")+
+  #scale_x_continuous(name =  "Temperature anomaly (?C)")+
+  xlab(bquote('Temperature difference 85'^'th'*' percentile (?C)')) +
+  geom_hline(yintercept = min(values(crop(quartiles[[9]],prov.proj))), lty = 2, color = "red", lwd = 0.8) +
+  geom_hline(yintercept = min(values(crop(quartiles[[8]],prov.proj))), lty = 2, color = "orange", lwd = 0.8) +
+  geom_vline(xintercept = min(values(crop(quartiles[[4]],prov.proj)))-273, lty = 2, color = "red", lwd = 0.8) +
+  geom_vline(xintercept = min(values(crop(quartiles[[3]],prov.proj)))-273, lty = 2, color = "orange", lwd = 0.8) +
+  geom_smooth(method='loess',formula=y~x, color = "black", lwd = 1) +
+  facet_wrap(~ BAREA.f) +
+  guides(fill = guide_legend(keywidth =  1))+
+  theme_bw() +
+  theme(
+    legend.position = "bottom",
+    panel.grid.minor = element_blank())
+
+p.meteo
+
+#ggsave('E:/articulo_first_attack/plots/meteo_ba.png',p.meteo, width = 8, height = 5)
+ggsave('E:/articulo_first_attack/plots/meteo.png',p.meteo, width = 8, height = 5)
+
+#fires.quartiles$SFIRES <- data$SimFires
+
+nrow(na.omit(fires.quartiles[fires.quartiles$WIND > fires.quartiles$q90.wind &
+                       fires.quartiles$TEMP > fires.quartiles$q90.temp,]))
+#/nrow(fires.quartiles)
+
+
+extreme.days <- (temperature[[floor(difftime("1979-01-01","1978-12-31")):nlayers(temperature)]]>quartiles[[4]]) * (wind.speed[[floor(difftime("1979-01-01","1978-12-31")):nlayers(wind.speed)]] > quartiles[[8]])
+#plot(sum(mask(extreme.days,prov.proj))/nlayers(temperature[[floor(difftime("1998-01-01","1978-12-31")):nlayers(temperature)]])*100)
+mean(na.omit(values(sum(mask(extreme.days,prov.proj)))))
+
+
+##################################################
+f <- aggregate(BAREA ~ MONTH,
+               fires.quartiles,
+               FUN=sum)
+f$NFIRE <- aggregate(BAREA ~ MONTH,
+                     fires.quartiles,
+                     FUN=length)[,2]
+f$logBAREA <- log(f$BAREA)
+
+  
+f.50 <- aggregate(BAREA ~ MONTH,
+                  fires.quartiles[fires.quartiles$TEMP>fires.quartiles$q50.temp,],
+                  FUN=sum)
+f.50$NFIRE <- aggregate(BAREA ~ MONTH,
+                  fires.quartiles[fires.quartiles$TEMP>fires.quartiles$q50.temp,],
+                  FUN=length)[,2]
+f.50$logBAREA <- log(f.50$BAREA)
+missing <- which(!c(1:12) %in% f.50$MONTH )
+for(i in missing){
+  f.50 <- rbind(f.50,c(i,0,0,0))
+}
+f.50 <- f.50[order(f.50$MONTH),]
+
+f.75 <- aggregate(BAREA ~ MONTH,
+                  fires.quartiles[fires.quartiles$TEMP>fires.quartiles$q75.temp,],
+                  FUN=sum)
+f.75$NFIRE <- aggregate(BAREA ~ MONTH,
+                        fires.quartiles[fires.quartiles$TEMP>fires.quartiles$q75.temp,],
+                        FUN=length)[,2]
+f.75$logBAREA <- log(f.75$BAREA)
+missing <- which(!c(1:12) %in% f.75$MONTH )
+for(i in missing){
+  f.75 <- rbind(f.75,c(i,0,0,0))
+}
+f.75 <- f.75[order(f.75$MONTH),]
+
+f.85 <- aggregate(BAREA ~ MONTH,
+                  fires.quartiles[fires.quartiles$TEMP>fires.quartiles$q85.temp,],
+                  FUN=sum)
+f.85$NFIRE <- aggregate(BAREA ~ MONTH,
+                        fires.quartiles[fires.quartiles$TEMP>fires.quartiles$q85.temp,],
+                        FUN=length)[,2]
+f.85$logBAREA <- log(f.85$BAREA)
+missing <- which(!c(1:12) %in% f.85$MONTH )
+for(i in missing){
+  f.85 <- rbind(f.85,c(i,0,0,0))
+}
+f.85 <- f.85[order(f.85$MONTH),]
+
+f.90 <- aggregate(BAREA ~ MONTH,
+                  fires.quartiles[fires.quartiles$TEMP>fires.quartiles$q90.temp,],
+                  FUN=sum)
+f.90$NFIRE <- aggregate(BAREA ~ MONTH,
+                        fires.quartiles[fires.quartiles$TEMP>fires.quartiles$q90.temp,],
+                        FUN=length)[,2]
+f.90$logBAREA <- log(f.90$BAREA)
+missing <- which(!c(1:12) %in% f.90$MONTH )
+for(i in missing){
+  f.90 <- rbind(f.90,c(i,0,0,0))
+}
+f.90 <- f.90[order(f.90$MONTH),]
+
+f.95 <- aggregate(BAREA ~ MONTH,
+                  fires.quartiles[fires.quartiles$TEMP>fires.quartiles$q95.temp,],
+                  FUN=sum)
+f.95$NFIRE <- aggregate(BAREA ~ MONTH,
+                        fires.quartiles[fires.quartiles$TEMP>fires.quartiles$q95.temp,],
+                        FUN=length)[,2]
+f.95$logBAREA <- log(f.95$BAREA)
+missing <- which(!c(1:12) %in% f.95$MONTH )
+for(i in missing){
+  f.95 <- rbind(f.95,c(i,0,0,0))
+}
+f.95 <- f.95[order(f.95$MONTH),]
+
+sum(fires[fires$AREA >= 50,]$AREA)/sum(fires$AREA)
+sum(f.95$NFIRE)/sum(f$NFIRE)#porcentaje incendios
+sum(f.95$BAREA)/sum(f$BAREA)#porcentaje area
+
+library(RColorBrewer)
+cols <- brewer.pal(n = 5, name = 'YlOrRd')
+w = 0.8
+ggplot() +
+  geom_bar(data = f, aes(x=factor(MONTH),y=log(logBAREA)),stat = 'identity',
+           fill = 'white', color = "gray30") +
+  geom_line(data = f.50, aes(x=MONTH,y=(logBAREA)),color = cols[1], lwd = w) +
+  geom_line(data = f.75, aes(x=MONTH,y=(logBAREA)),color = cols[2], lwd = w) +
+  geom_line(data = f.85, aes(x=MONTH,y=(logBAREA)),color = cols[3], lwd = w) +
+  geom_line(data = f.90, aes(x=MONTH,y=(logBAREA)),color = cols[4], lwd = w) +
+  geom_line(data = f.95, aes(x=MONTH,y=(logBAREA)),color = cols[5], lwd = w) +
+  geom_text(aes(x = c(f.50[1,]$MONTH,
+                      f.75[1,]$MONTH,
+                      f.85[1,]$MONTH,
+                      f.90[1,]$MONTH,
+                      f.95[1,]$MONTH),
+                y= c(f.50[1,]$logBAREA,
+                     f.75[1,]$logBAREA,
+                     f.85[1,]$logBAREA,
+                     f.90[1,]$logBAREA,
+                     f.95[1,]$logBAREA),
+                label = c("P50",'P75','P85','P90','P95')),
+            vjust = -0.3) +
+  scale_y_continuous(name = "Percentage of fires",
+                     sec.axis = sec_axis(~ . * 1,name = "Number of fires")) +
+  scale_x_discrete(name = "Month") +
+  theme_bw()+
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+
+p.barea.t <- ggplot() +
+  geom_bar(data = f, aes(x=factor(MONTH),y=BAREA / 60000),stat = 'identity',
+           fill = 'white', color = "gray30") +
+  geom_smooth(data = f.50, method = "loess", span = 0.3,se = F, aes(x=MONTH,y=(BAREA/f$BAREA)),color = cols[1], lwd = w) +
+  geom_smooth(data = f.75, method = "loess", span = 0.3,se = F,aes(x=MONTH,y=(BAREA/f$BAREA)),color = cols[2], lwd = w) +
+  geom_smooth(data = f.85, method = "loess", span = 0.3,se = F,aes(x=MONTH,y=(BAREA/f$BAREA)),color = cols[3], lwd = w) +
+  geom_smooth(data = f.90, method = "loess", span = 0.3,se = F,aes(x=MONTH,y=(BAREA/f$BAREA)),color = cols[4], lwd = w) +
+  geom_smooth(data = f.95, method = "loess", span = 0.3,se = F,aes(x=MONTH,y=(BAREA/f$BAREA)),color = cols[5], lwd = w) +
+  # geom_text(aes(x = c(f.50[1,]$MONTH,
+  #                     f.75[1,]$MONTH,
+  #                     f.85[1,]$MONTH,
+  #                     f.90[1,]$MONTH,
+  #                     f.95[1,]$MONTH),
+  #               y= c(f.50[1,]$BAREA/f[1,]$BAREA,
+  #                    f.75[1,]$BAREA/f[1,]$BAREA,
+  #                    f.85[1,]$BAREA/f[1,]$BAREA-0.02,
+  #                    f.90[1,]$BAREA/f[1,]$BAREA-0.03,
+  #                    f.95[1,]$BAREA/f[1,]$BAREA-0.05),
+  #               label = c("P50",'P75','P85','P90','P95')),
+  #           vjust = -0.3) +
+  scale_y_continuous(name = "Percentage burned area",
+                     sec.axis = sec_axis(~ . * 60000,name = "Burned area (Ha)")) +
+  scale_x_discrete(name = "Month") +
+  theme_bw()+
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+
+ggsave('E:/articulo_first_attack/plots/temp_ba.png',p.barea.t,width = 5, height = 4.5)
+ggsave('E:/articulo_first_attack/plots/wind_ba.png',p.barea.w,width = 5, height = 4.5)
+
+p.t <- ggplot() +
+  geom_bar(data = f, aes(x=factor(MONTH),y=NFIRE / 300),stat = 'identity', 
+           fill = 'white', color = "gray30") +
+  geom_line(data = f.50, aes(x=MONTH,y=(NFIRE/f$NFIRE)),color = cols[1], lwd = w) +
+  geom_line(data = f.75, aes(x=MONTH,y=(NFIRE/f$NFIRE)),color = cols[2], lwd = w) +
+  geom_line(data = f.85, aes(x=MONTH,y=(NFIRE/f$NFIRE)),color = cols[3], lwd = w) +
+  geom_line(data = f.90, aes(x=MONTH,y=(NFIRE/f$NFIRE)),color = cols[4], lwd = w) +
+  geom_line(data = f.95, aes(x=MONTH,y=(NFIRE/f$NFIRE)),color = cols[5], lwd = w) +
+  geom_text(aes(x = c(f.50[1,]$MONTH,
+                      f.75[1,]$MONTH,
+                      f.85[1,]$MONTH,
+                      f.90[1,]$MONTH,
+                      f.95[1,]$MONTH),
+                y= c(f.50[1,]$NFIRE/f[1,]$NFIRE,
+                     f.75[1,]$NFIRE/f[1,]$NFIRE,
+                     (f.85[1,]$NFIRE/f[1,]$NFIRE)-0.05,
+                     #f.85[1,]$NFIRE/f[1,]$NFIRE,
+                     f.90[1,]$NFIRE/f[1,]$NFIRE,
+                     f.95[1,]$NFIRE/f[1,]$NFIRE),
+                     #(f.95[1,]$NFIRE/f[1,]$NFIRE)-0.05),
+                label = c("P50",'P75','P85','P90','P95')),
+            vjust = -0.3) +
+  scale_y_continuous(name = "Percentage of fires", limits = c(0,1),
+                     sec.axis = sec_axis(~ . * 300,name = "Number of fires")) +
+  scale_x_discrete(name = "Month") +
+  theme_bw()+
+  theme(
+    #panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank()
+  )
+
+ggsave('E:/articulo_first_attack/plots/temp.png',p.t,width = 5, height = 5.5)
+ggsave('E:/articulo_first_attack/plots/wind.png',p.w,width = 5, height = 5.5)
+
+ggplot() +
+  # geom_bar(data = f, aes(x=factor(MONTH),y=NFIRE / 4000),stat = 'identity', 
+  #          fill = 'white', color = "gray30") +
+  geom_line(data = f.50, aes(x=MONTH,y=(NFIRE)),color = cols[1], lwd = w) +
+  geom_line(data = f.75, aes(x=MONTH,y=(NFIRE)),color = cols[2], lwd = w) +
+  geom_line(data = f.85, aes(x=MONTH,y=(NFIRE)),color = cols[3], lwd = w) +
+  geom_line(data = f.90, aes(x=MONTH,y=(NFIRE)),color = cols[4], lwd = w) +
+  geom_line(data = f.95, aes(x=MONTH,y=(NFIRE)),color = cols[5], lwd = w) +
+  geom_text(aes(x = c(f.50[1,]$MONTH,
+                      f.75[1,]$MONTH,
+                      f.85[1,]$MONTH,
+                      f.90[1,]$MONTH,
+                      f.95[1,]$MONTH),
+                y= c(f.50[1,]$NFIRE,
+                     f.75[1,]$NFIRE,
+                     f.85[1,]$NFIRE,
+                     f.90[1,]$NFIRE,
+                     f.95[1,]$NFIRE),
+                label = c("P50",'P75','P85','P90','P95')),
+            vjust = -0.3) +
+  scale_y_continuous(name = "Percentage of fires") +
+  scale_x_discrete(name = "Month") +
+  theme_bw()
+
+f <- aggregate(BAREA ~ MONTH,
+               fires.quartiles,
+               FUN=sum)
+f$NFIRE <- aggregate(BAREA ~ MONTH,
+                     fires.quartiles,
+                     FUN=length)[,2]
+f$logBAREA <- log(f$BAREA)
+
+f.50 <- aggregate(BAREA ~ MONTH,
+                  fires.quartiles[fires.quartiles$WIND>fires.quartiles$q50.wind,],
+                  FUN=sum)
+f.50$NFIRE <- aggregate(BAREA ~ MONTH,
+                        fires.quartiles[fires.quartiles$WIND>fires.quartiles$q50.wind,],
+                        FUN=length)[,2]
+f.50$logBAREA <- log(f.50$BAREA)
+missing <- which(!c(1:12) %in% f.50$MONTH )
+for(i in missing){
+  f.50 <- rbind(f.50,c(i,0,0,0))
+}
+f.50 <- f.50[order(f.50$MONTH),]
+
+f.75 <- aggregate(BAREA ~ MONTH,
+                  fires.quartiles[fires.quartiles$WIND>fires.quartiles$q75.wind,],
+                  FUN=sum)
+f.75$NFIRE <- aggregate(BAREA ~ MONTH,
+                        fires.quartiles[fires.quartiles$WIND>fires.quartiles$q75.wind,],
+                        FUN=length)[,2]
+f.75$logBAREA <- log(f.75$BAREA)
+missing <- which(!c(1:12) %in% f.75$MONTH )
+for(i in missing){
+  f.75 <- rbind(f.75,c(i,0,0,0))
+}
+f.75 <- f.75[order(f.75$MONTH),]
+
+f.85 <- aggregate(BAREA ~ MONTH,
+                  fires.quartiles[fires.quartiles$WIND>fires.quartiles$q85.wind,],
+                  FUN=sum)
+f.85$NFIRE <- aggregate(BAREA ~ MONTH,
+                        fires.quartiles[fires.quartiles$WIND>fires.quartiles$q85.wind,],
+                        FUN=length)[,2]
+f.85$logBAREA <- log(f.85$BAREA)
+missing <- which(!c(1:12) %in% f.85$MONTH )
+for(i in missing){
+  f.85 <- rbind(f.85,c(i,0,0,0))
+}
+f.85 <- f.85[order(f.85$MONTH),]
+
+f.90 <- aggregate(BAREA ~ MONTH,
+                  fires.quartiles[fires.quartiles$WIND>fires.quartiles$q90.wind,],
+                  FUN=sum)
+f.90$NFIRE <- aggregate(BAREA ~ MONTH,
+                        fires.quartiles[fires.quartiles$WIND>fires.quartiles$q90.wind,],
+                        FUN=length)[,2]
+f.90$logBAREA <- log(f.90$BAREA)
+missing <- which(!c(1:12) %in% f.90$MONTH )
+for(i in missing){
+  f.90 <- rbind(f.90,c(i,0,0,0))
+}
+f.90 <- f.90[order(f.90$MONTH),]
+
+f.95 <- aggregate(BAREA ~ MONTH,
+                  fires.quartiles[fires.quartiles$WIND>fires.quartiles$q95.wind,],
+                  FUN=sum)
+f.95$NFIRE <- aggregate(BAREA ~ MONTH,
+                        fires.quartiles[fires.quartiles$WIND>fires.quartiles$q95.wind,],
+                        FUN=length)[,2]
+f.95$logBAREA <- log(f.95$BAREA)
+missing <- which(!c(1:12) %in% f.95$MONTH )
+for(i in missing){
+  f.95 <- rbind(f.95,c(i,0,0,0))
+}
+f.95 <- f.95[order(f.95$MONTH),]
+
+sum(fires[fires$AREA >= 50,]$AREA)/sum(fires$AREA)
+sum(f.95$NFIRE)/sum(f$NFIRE)#porcentaje incendios
+sum(f.95$BAREA)/sum(f$BAREA)#porcentaje area
+
+# area.sim.fires <- data.frame(cbind(aggregate(AREA ~ NFIRES, fires[fires$AREA>1,], FUN = sum),(aggregate(AREA ~ NFIRES, fires[fires$AREA>1,], FUN = length)[,2])))
+# names(area.sim.fires) <- c("NFIRES","AREA","N")
+# area.sim.fires$NAREA <- area.sim.fires$AREA/area.sim.fires$N
+area.sim.fires <- aggregate(AREA ~ NFIRES, fires[fires$AREA>1,], FUN = mean)
+sum(aggregate(AREA ~ DATE, fires[fires$NFIRES>11,], FUN=sum)[,2])
+names(area.sim.fires)[2] <- "NAREA"
+
+p.sim <- ggplot(area.sim.fires,aes(x=factor(X1),y=X2)) +
+  geom_bar(stat = 'identity',color = 'gray20',fill = 'steelblue') + 
+  scale_x_discrete(name="Simultaneous fires") +
+  scale_y_continuous(name="Acc. burned area (Ha)") +
+  theme_bw()
+  
+ggsave('E:/articulo_first_attack/plots/simfires.png',p.sim,width = 6, height = 3)
+
+#f.size <- log(ave(fires[fires$AREA>10,]$AREA, as.factor(fires[fires$AREA>10,]$NFIRES)))
+fires.na <- merge(fires,area.sim.fires,"NFIRES")
+fires.na$NAREA.f <- factor(
+  cut(fires.na$AREA,c(0,10,Inf)),
+  labels = c('Successfully suppressed','Escaped'))
+
+p.sim <- ggplot(fires.na[fires.na$AREA>1,],aes(x=NFIRES,y=log(AREA),
+                                 fill= NAREA)) + 
+  geom_violin(trim=TRUE,aes(group = NFIRES), lwd = 0.3) +
+  geom_boxplot(aes(group = NFIRES),
+               width=0.1, fill="white",outlier.shape = NA, lwd = 0.3)+
+  geom_smooth(method='loess',formula=y~x, color = "black", lwd = 1) +
+  scale_fill_viridis(name = "Avg. size (ha)",option = "viridis",discrete = F) +
+  geom_hline(yintercept = 2.69, lty = 2, color = "red", lwd = 0.8) +
+  geom_hline(yintercept = 1.69, lty = 2, color = "red", lwd = 0.8) +
+  scale_y_continuous(name = "Log burned area (ha)") +
+  scale_x_continuous(name = "Fire simultaneity (n)", 
+                     breaks = unique(fires.na[fires.na$AREA>1,]$NFIRES),
+                     labels = unique(fires.na[fires.na$AREA>1,]$NFIRES)) +
+  #facet_wrap( ~ NAREA.f, nrow = 2) +
+  theme_bw() +
+  theme(legend.position = "right",
+          #panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(),
+        panel.border = element_rect(colour = "black", fill=NA, size=1))
+
+ggsave('E:/articulo_first_attack/plots/simfires_v2.png',p.sim,width = 7, height = 3)
+
+vindep.df <- do.call(cbind.data.frame, vindep)
+# names(vindep.df) <- c('barriers','paths','tracks','firestations',
+#                       'viewroad','viewtower','viewurban')
+names(vindep.df) <- c('canopy','roads','paths','tracks',
+                      'barriers','water','helipad','height',
+                      'landcover',
+                      'viewRoads', 'viewUrban')
+
+vindep.df$temp <- unlist(fires.temp)
+vindep.df$temp.q85 <- unlist(fires.temp.q85)
+vindep.df$wspeed <- unlist(fires.wspeed)
+vindep.df$t85 <- vindep.df$temp - vindep.df$temp.q85
+vindep.df$landcover.f <- factor(vindep.df$landcover)
+
+data <- na.omit(data.frame(cbind(vdep[,3],vindep.df,vdep[,4])))
+names(data)[1] <- "fires"
+names(data)[ncol(data)] <- "SimFires"
+#data$t85.f <- ifelse(data$t85 <0 , "0" , "1")
+
+
+f <- formula(fires ~ SimFires +
+               landcover.f +
+               viewRoads + 
+               t85 + 
+               #temp + 
+               wspeed  + 
+               helipad + 
+               tracks + 
+               paths + 
+               #canopy + 
+               height + 
+               roads)
+
+#f.all <- formula(fires ~ .)
+
+#loop here
+models <- list()
+evals <- list()
+iteration <- 1
+
+for (i in 1:30){
+  
+  nfolds <- 3
+  k = kfold(data, k=nfolds)
+  
+  for (fold in 1:nfolds){
+    
+    print(paste('iteration',iteration))
+  
+    cal.sample <- which(k == fold)#sample(nrow(data), size = floor(nrow(data)*0.2))
+    data.train <-data[-cal.sample,]
+    data.test <-data[cal.sample,]
+    
+    #f <- formula(fires ~ firestations + t85 + viewurban + viewroad + viewtower )
+    
+    models[[iteration]] <- randomForest(f,
+                          data = data.train,
+                          ntree = 300,
+                          mtry = 2,
+                          importance = TRUE)
+    
+    # model <- glm(f,
+    #                       data = data.train,
+    #                       family = "binomial")
+    
+    # obj <- tune.randomForest(f, data = data.train, ntree =  seq(100,1000,100), mtry = 1:7)
+    
+    # best_mod <- obj$best.model
+    
+    evals[[iteration]]<-evaluate(p=data.test[data.test$fires==1,],a=data.test[data.test$fires==0,],model=models[[iteration]])
+    #myrf.eval<-evaluate(p=data.test[data.test$fires==1,],a=data.test[data.test$fires==0,],model=best_mod)
+    
+    iteration <- iteration + 1
+      
+  }
+  
+}
+
+#models.comb <- combine(unlist(models))
+models.comb <- do.call(combine,models)
+
+par(mfrow=c(1,3))
+plot(evals[[1]],'ROC')
+boxplot(evals[[1]], col = c('darkgreen', 'red'))
+density(evals[[1]])
+
+plotmo(model, pmethod = "apartdep")
+#plotmo(best_mod, pmethod = "partdep")
+varImpPlot(models.comb)
+#varImpPlot(best_mod)
+plotmo(models.comb, #pmethod = "apartdep",
+       degree1 = FALSE,
+       degree2 = TRUE,
+       lty.degree2 = 2,
+       #col.image = mycolors,
+       type2 = "image",
+       ngrid2 = 200, caption = "")
+#pdep <- partial(best_mod, pred.var = "temp", plot = TRUE, chull = TRUE)
+
+aucs <- list()
+pred <- list()
+
+for(i in 1:length(evals)){
+  aucs[[i]] <- evals[[i]]@auc
+  pred[[i]] <- as.data.frame(cbind(evals[[i]]@presence,evals[[i]]@absence))
+}
+
+library(reshape)
+
+aucs <- as.data.frame(do.call(c,aucs))
+names(aucs) <- "AUC"
+pred <- do.call(rbind,pred)
+names(pred) <- c("Success","Failure")
+pred.melt <- melt(pred)
+var.imp <- data.frame(importance(models.comb)[,1])
+names(var.imp) <- "IncMSE"
+var.imp$variable <- c('simFires', 'Fuel type', 'viewRoad','tempP85',
+                      'wSpeed','airSupp','accTrack','accPath','vegHeight',
+                      'accRoad')#row.names(var.imp)
+
+library(ggplot2)
+
+p1 <-ggplot(pred.melt,aes(x=variable,y=value,fill=variable)) + 
+  geom_violin(trim=FALSE)+
+  geom_boxplot(width=0.1, fill="white",outlier.shape = NA)+
+  #geom_point(size = 0.1, pch = 15) +
+  scale_fill_brewer(name = "") +
+  geom_hline(yintercept = 0.95, color = "red", lty = 2) +
+  geom_text(aes(0, 0.95, label = "0.95 - Optimal value", vjust = -1, size = 9, color = "red")) +
+  scale_y_continuous(limits = c(0.35,1),name="Predicted probability") +
+  scale_x_discrete(name = "") +
+  theme_minimal() +
+  theme(legend.position = "none",
+        panel.border = element_rect(colour = "black", fill=NA, size=1))
+
+ggsave('E:/articulo_first_attack/boxplot.png',p1,width = 5, height = 4)
+
+p2 <- ggplot(aucs, aes(x=AUC)) + geom_histogram(color="gray15", fill="lightgrey") + 
+  geom_vline(xintercept = mean(aucs$AUC), color = "red", lty = 1) +
+  geom_vline(xintercept = mean(aucs$AUC) + sd(aucs$AUC), color = "red", lty = 2) +
+  geom_vline(xintercept = mean(aucs$AUC) - sd(aucs$AUC), color = "red", lty = 2) +
+  ylab("Counts") +
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        panel.border = element_rect(colour = "black", fill=NA, size=1))
+
+ggsave('E:/articulo_first_attack/histogram.png',p2,width = 5, height = 4)
+
+p3 <- ggplot(var.imp, aes(x=reorder(variable, -IncMSE),y=IncMSE)) + 
+  geom_bar(stat="identity", color="black", fill="lightgrey") +
+  scale_x_discrete(name = "") +
+  scale_y_continuous(name = "Increase in MSE (%)") +
+  theme_minimal() +
+  theme(legend.position = "none",
+        panel.border = element_rect(colour = "black", fill=NA, size=1))
+
+ggsave('E:/articulo_first_attack/importance.png',p3,width = 6.5, height = 3)
+
+
+  #HAY QUE REMUESTREAR LOS 1, HAY DEMASIADOS INCENDIOS PEQUE?OS QUE SESGAN
+#RANDOM FOREST.
+
+#################3 SVM ############3
+#SVM
+
+# library(e1071)
+
+#Fit a model. The function syntax is very similar to lm function
+
+# model_svm <- svm(f, data.train)
+# 
+# #Use the predictions on the data
+# 
+# pred <- data.frame(cbind(predict(model_svm, data.test),data.test$fires))
+# names(pred) <- c("Pred", "Obs")
+# 
+# bwplot(Pred ~factor(Obs), pred)
+# 
+# obj <- tune.randomForest(f, data = data.train, ntree =  seq(100,1000,100), mtry = 2:7)
+# 
+# best_mod <- obj$best.model
+# pred <- data.frame(cbind(predict(best_mod, data.test),data.test$fires))
+# names(pred) <- c("Pred", "Obs")
+# 
+# ############## PROBAR CON TODOS LOS INCENDIOS DE CATALUNYA
+# # INCLUIR DISTANCIA A HELIPUERTOS
+
+# library(ROCR)
+# pred <- prediction(predict(model,data.test),data.test$fires)
+# roc.perf = performance(pred, measure = "tpr", x.measure = "fpr")
+# plot(roc.perf)
+# abline(a=0, b= 1)
+# 
+# pROC = function(pred, fpr.stop){
+#   perf <- performance(pred,"tpr","fpr")
+#   for (iperf in seq_along(perf@x.values)){
+#     ind = which(perf@x.values[[iperf]] <= fpr.stop)
+#     perf@y.values[[iperf]] = perf@y.values[[iperf]][ind]
+#     perf@x.values[[iperf]] = perf@x.values[[iperf]][ind]
+#   }
+#   return(perf)
+# }
+# 
+# proc.perf = pROC(pred, fpr.stop=0.1)
+# plot(proc.perf)
+# abline(a=0, b= 1)
+# 
+# opt.cut = function(perf, pred){
+#   cut.ind = mapply(FUN=function(x, y, p){
+#     d = (x - 0)^2 + (y-1)^2
+#     ind = which(d == min(d))
+#     c(sensitivity = y[[ind]], specificity = 1-x[[ind]], 
+#       cutoff = p[[ind]])
+#   }, perf@x.values, perf@y.values, pred@cutoffs)
+# }
+# print(opt.cut(roc.perf, pred))
+# 
+# cost.perf = performance(pred, "cost", cost.fp = 2, cost.fn = 1)
+# pred@cutoffs[[1]][which.min(cost.perf@y.values[[1]])]
+# 
+# acc.perf = performance(pred, measure = "acc")
+# plot(acc.perf)
+# 
+# ind = which.max( slot(acc.perf, "y.values")[[1]] )
+# acc = slot(acc.perf, "y.values")[[1]][ind]
+# cutoff = slot(acc.perf, "x.values")[[1]][ind]
+# print(c(accuracy= acc, cutoff = cutoff))
+
+####################################
+setwd('E:/articulo_first_attack/')
+
+list.rasters <- list.files('catalunya',pattern = '\\.tif$',full.names = TRUE)
+
+r <- raster(list.rasters[[1]])
+r <- aggregate(r,2)
+r <- brick(r)
+
+for(i in 2:length(list.rasters)){
+  
+  r2 <- raster(list.rasters[[i]])
+  r2 <- resample(extend(r2,r[[1]]),r[[1]], fun = median)
+  r <- addLayer(r,r2)
+  
+}
+
+# rm(r2)
+# gc()
+
+names(r) <- c('canopy','roads','paths','tracks',
+              'barriers','water','helipad','height',
+              'landcover',
+              'viewRoads', 'viewUrban')
+
+SimFires <- raster(ncol=ncol(r[[1]]), nrow=nrow(r[[1]]), 
+                   xmn=extent((r[[1]]))[1], 
+                   xmx=extent((r[[1]]))[2], 
+                   ymn=extent((r[[1]]))[3], 
+                   ymx=extent((r[[1]]))[4])
+
+res(SimFires) <- res((r[[1]]))
+values(SimFires) <- 0
+r <- addLayer(r, SimFires)
+
+r$landcover.f <- as.factor(r$landcover)
+
+t85 <- raster(ncol=ncol(r[[1]]), nrow=nrow(r[[1]]), 
+                   xmn=extent((r[[1]]))[1], 
+                   xmx=extent((r[[1]]))[2], 
+                   ymn=extent((r[[1]]))[3], 
+                   ymx=extent((r[[1]]))[4])
+
+res(t85) <- res((r[[1]]))
+values(t85) <- 8.5#mean(data$t85)
+r <- addLayer(r, t85)
+
+wspeed <- raster(ncol=ncol(r[[1]]), nrow=nrow(r[[1]]), 
+              xmn=extent((r[[1]]))[1], 
+              xmx=extent((r[[1]]))[2], 
+              ymn=extent((r[[1]]))[3], 
+              ymx=extent((r[[1]]))[4])
+
+res(wspeed) <- res((r[[1]]))
+values(wspeed) <- 2.5#mean(data$wspeed)
+r <- addLayer(r, wspeed)
+
+names(r) <- c('canopy','roads','paths','tracks',
+              'barriers','water','helipad','height',
+              'landcover',
+              'viewRoads', 'viewUrban',
+              'SimFires','landcover.f',
+              't85','wspeed')
+
+writeRaster(r,'E:/articulo_first_attack/variables.nc',
+            overwrite = TRUE)
+
+plot(prov.proj,add=T)
+crs(r) <- "+init=epsg:25831"
+q50.temp.p <- projectRaster(q50.temp,r,method = 'ngb')
+q75.temp.p <- projectRaster(q75.temp,r,method = 'ngb')
+q85.temp.p <- projectRaster(q85.temp,r,method = 'ngb')
+q90.temp.p <- projectRaster(q90.temp,r,method = 'ngb')
+q95.temp.p <- projectRaster(q95.temp,r,method = 'ngb')
+
+q.temp <- brick(q50.temp.p,
+                q75.temp.p,
+                q85.temp.p,
+                q90.temp.p,
+                q95.temp.p)
+
+writeRaster(q.temp,"q.temp.nc",overwrite = TRUE)
+
+q50.wind.p <- projectRaster(q50.wind,r,method = 'ngb')
+q75.wind.p <- projectRaster(q75.wind,r,method = 'ngb')
+q85.wind.p <- projectRaster(q85.wind,r,method = 'ngb')
+q90.wind.p <- projectRaster(q90.wind,r,method = 'ngb')
+q95.wind.p <- projectRaster(q95.wind,r,method = 'ngb')
+
+q.wind <- brick(q50.wind.p,
+                q75.wind.p,
+                q85.wind.p,
+                q90.wind.p,
+                q95.wind.p)
+
+writeRaster(q.wind,"q.wind.nc",overwrite = TRUE)
+
+# q85.temp.cat <- crop(q85.temp.p, prov.proj)
+# q85.temp.cat <- resample(q85.temp.cat,r[[1]],fun = median)
+
+temp <- brick('catalunya/ncdf/q.temp.nc')
+wind <- brick('catalunya/ncdf/q.wind.nc')
+vars <- brick('catalunya/ncdf/variables.nc')
+
+names(temp) <- c('q50','q75','q85','q90','q95')
+names(wind) <- c('q50','q75','q85','q90','q95')
+names(vars) <- c('canopy','roads','paths','tracks',
+              'barriers','water','helipad','height',
+              'landcover',
+              'viewRoads', 'viewUrban',
+              'SimFires','landcover.f',
+              't85','wspeed')
+
+vars <- dropLayer(vars, 14)
+vars <- dropLayer(vars, 14)
+vars$t85 <- temp$q50 - temp$q85
+vars$wspeed <- wind$q85
+
+prov <- readOGR("E:/Articulo_supression/Limites_Administrativos/bm5mv20sh0tpp1_20180101_0.shp")
+prov.proj <- spTransform(prov,CRSobj = CRS("+init=epsg:4326"))
+prov.proj.simp <- gSimplify(prov.proj,500,topologyPreserve = TRUE )
+noforest <- readOGR("E:/Articulo_supression/Data/noforest.shp")
+
+mod.rf.pred <-predict(vars, models.comb,  
+                      type="response", index=1, 
+                      progress="window")
+
+mod.rf.pred.c <- mask(mod.rf.pred,prov.proj.simp)
+writeRaster(mod.rf.pred.c,'fa.t50.w85.tif')
+
+map.data <- as(mod.rf.pred.c, "SpatialPixelsDataFrame")
+map.data <- as.data.frame(map.data)
+map.data$success <- factor(
+  cut(map.data$layer, c(-Inf, 0.8, 0.9, 0.95, 0.99, Inf)),
+  labels = c("Very low","Low","Medium","High","Very high")
+)
+
+ggplot() +
+  geom_raster(data = map.data, aes(x = x, 
+                                 y = y, 
+                                 fill = success)) +
+  scale_fill_viridis(discrete=TRUE,option = "viridis",
+                     direction = -1,
+                     name = "Predicted probability"
+                     ) +
+  geom_polygon(data = noforest, aes(x = long, 
+                                    y = lat, 
+                                    group = group),
+               color = NA, fill = "gray96") +
+  geom_polygon(data = prov.proj.simp, aes(x = long, 
+                                       y = lat, 
+                                       group = group),
+            color = "gray20", fill=NA,lwd = 0.75) +
+  coord_equal() +
+  theme_light() +
+  theme(axis.line=element_blank(),
+        axis.text.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks=element_blank(),
+        axis.title.x=element_blank(),
+        axis.title.y=element_blank(),
+        legend.position="none",
+        panel.background=element_blank(),
+        panel.border=element_blank(),
+        panel.grid.major=element_blank(),
+        panel.grid.minor=element_blank(),
+        plot.background=element_blank())
+
+# map + scalebar(median, location = "bottomright", st.size = 0.5,
+#                dist = 100, dd2km = TRUE, model = 'GRS80')
+
+ggsave("results/map.png",map, width = 6, height = 6)
+
+# pred.q50.0sim.c <- mask(pred.q50.0sim,prov.proj.simp)
+# pred.q95.0sim.c <- mask(pred.q95.0sim,prov.proj.simp)
+# 
+# spplot(pred.q50.0sim.c,
+#      at = c(0.6,0.8,0.9,0.95,1))
+# 
+# spplot(pred.q95.0sim.c,
+#      at = c(0.6,0.8,0.9,0.95,1))

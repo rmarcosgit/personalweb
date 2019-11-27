@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Juan de la Riva Fernández on Marcos Rodrigues</title>
+    <link>/authors/juan-de-la-riva-fern%C3%A1ndez/</link>
+    <description>Recent content in Juan de la Riva Fernández on Marcos Rodrigues</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Mon, 01 Jan 2018 00:00:00 +0100</lastBuildDate>
+    
+	<atom:link href="/authors/juan-de-la-riva-fern%C3%A1ndez/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>The role of short-term weather conditions in temporal dynamics of fire regime features in mainland Spain</title>
+      <link>/publication/jimenez-2018-role/</link>
+      <pubDate>Mon, 01 Jan 2018 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/jimenez-2018-role/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Understanding wildfires in mainland Spain. A comprehensive analysis of fire regime features in a climate-human context</title>
+      <link>/publication/jimenez-2017-understanding/</link>
+      <pubDate>Sun, 01 Jan 2017 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/jimenez-2017-understanding/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Fire risk on Marcos Rodrigues</title>
+    <link>/tags/fire-risk/</link>
+    <description>Recent content in Fire risk on Marcos Rodrigues</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Wed, 27 Apr 2016 00:00:00 +0200</lastBuildDate>
+    
+	<atom:link href="/tags/fire-risk/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>FIREGLOBE</title>
+      <link>/project/fireglobe/</link>
+      <pubDate>Wed, 27 Apr 2016 00:00:00 +0200</pubDate>
+      
+      <guid>/project/fireglobe/</guid>
+      <description>PROJECT GOAL The Fireglobe project aims to generate a system to predict and evaluate the risk of forest fires that can be applied at both the NATIONAL and GLOBAL scales through the use of remote sensing imagery and geographic information systems.</description>
+    </item>
+    
+    <item>
+      <title>FIREMAP</title>
+      <link>/project/firemap/</link>
+      <pubDate>Wed, 27 Apr 2016 00:00:00 +0200</pubDate>
+      
+      <guid>/project/firemap/</guid>
+      <description>Análisis integrado del riesgo de incendios forestales mediante Teledetección y Sistemas de Información Geográfica</description>
+    </item>
+    
+    <item>
+      <title>PYRORAMA</title>
+      <link>/project/pyrorama/</link>
+      <pubDate>Wed, 27 Apr 2016 00:00:00 +0200</pubDate>
+      
+      <guid>/project/pyrorama/</guid>
+      <description>Modelado de escenarios futuros de riesgo de incendios y cambios en la ocupación del suelo a escala nacional</description>
+    </item>
+    
+  </channel>
+</rss>

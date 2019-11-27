@@ -1,0 +1,1306 @@
+library(DescTools)
+library(reshape)
+library(ggplot2)
+library(mgcv)
+library(randomForest)
+library(plotmo)
+library(dunn.test)
+
+############################################################################
+datos <- na.omit(read.delim2('E:/Estancia_IDL/data1&7days.txt'))
+datos <- datos[datos$SIZE %in% c("Small","Large") & datos$MONTH %in% c(6,7,8,9),]
+datos$Vdep <- ifelse(datos$SIZE == "Large",1,0)
+
+datos.L1 <- cbind(datos[,c(2,48,49,51)],(datos[names(datos) %like any% c("%RAIN%","%TEMP%","%RH%")]))
+datos.L2 <- cbind(datos[,c(2,48,49,51)],datos[names(datos) %like any% c("%FFMC%","%DMC%","%DC%")])
+datos.L3 <- cbind(datos[,c(2,48,49,51)],datos[names(datos) %like any% c("%ISI%","%BUI%")])
+datos.FWI <- cbind(datos[,c(2,48,49,51)],datos[names(datos) %like any% c("%FWI%")])
+
+rf.class.L1 <- randomForest(Vdep ~ RAIN7d + TEMP + TEMP7d +
+                              TEMPp85 + TEMP7dp85 + RH + RH7d,
+                          data = datos.L1[datos.L1$REGION=="NW",],
+                          ntree = 100,
+                          importance = TRUE,
+                          mtry = 5,
+                          do.trace = 100)
+plotmo(rf.class.L1)
+varImpPlot(rf.class.L1)
+
+rf.class.L2 <- randomForest(SIZE ~ FFMC + FFMC7d + DMC + DMC7d +
+                              DC + DC7d,
+                            data = datos.L2,
+                            ntree = 100,
+                            mtry = 3,
+                            do.trace = 100)
+
+rf.class.L3 <- randomForest(SIZE ~ ISI + ISI7d + BUI + BUI7d,
+                            data = datos.L3,
+                            ntree = 100,
+                            mtry = 3,
+                            do.trace = 100)
+
+rf.class.FWI <- randomForest(SIZE ~ FWI + FWI7d,
+                            data = datos.FWI,
+                            ntree = 100,
+                            mtry = 1,
+                            do.trace = 100)
+
+rf.class.mix <- randomForest(SIZE ~ RAIN + RAIN7d + TEMP + TEMP7d +
+                               TEMPp85 + TEMP7dp85 + RH + RH7d +
+                               ISI + ISI7d,
+                             data = datos[datos$REGION == "NW",],
+                             ntree = 1000,
+                             mtry = 3,
+                             do.trace = 100)
+
+###################### DUNN TEST ################
+dunn.test(datos$FWI,
+          datos$SIZE,
+          method = "bonferroni", wrap = TRUE)
+
+###################### GAMM ####################
+model <- bam(Vdep~s(RAIN7d, by=REGION) +
+               s(RH, by=REGION) +
+               s(ISI, by=REGION) +
+               s(ISI7d, by=REGION) +
+               s(TEMP7d, by=REGION) +
+               s(TEMPp85, by=REGION) +
+               s(TEMP7dp85, by=REGION) +
+               s(TEMP, by=REGION),
+             family = binomial(),
+             data=datos[datos$MONTH %in% c(6,7,8,9),])
+
+summary(model)
+plot(model)
+
+####################### PCA ###########
+pca.L1 <- prcomp(datos.L1[4:ncol(datos.L1)], scale. = TRUE,
+                 center = TRUE)
+
+summary(pca.L1)
+pca.L1$rotation[,1:4]
+####################### EXPLORATORY PLOTS ################
+datos.melt <- melt(cbind(scale(datos[8:47]),datos[c(2,48:49)]))
+datos.melt$Type <- ifelse(grepl("p85",datos.melt$variable)==TRUE,"P85","Raw")
+
+ggplot(data = datos.melt[datos.melt$Type=="Raw",],
+       aes(y=value,x=variable,fill = REGION )) +
+  geom_boxplot() +
+  scale_y_continuous(limits = c(-10,10)) +
+  facet_wrap( ~ SIZE, nrow = 3) +
+  theme_minimal()
+
+ggplot(data = datos.melt[datos.melt$Type=="Raw",],
+       aes(y=value,x=variable,fill = SIZE )) +
+  geom_boxplot() +
+  scale_y_continuous(limits = c(-10,10)) +
+  facet_wrap( ~ REGION, nrow = 4) +
+  theme_minimal()
+
+ggplot(data = datos.melt[datos.melt$Type=="P85",],
+       aes(y=value,x=variable,fill = REGION )) +
+  geom_boxplot() +
+  scale_y_continuous(limits = c(0,4)) +
+  facet_wrap( ~ SIZE, nrow = 3) +
+  theme_minimal()
+
+ggplot(data = datos.melt[datos.melt$Type=="P85",],
+       aes(y=value,x=variable,fill = SIZE )) +
+  geom_boxplot() +
+  scale_y_continuous(limits = c(0,4)) +
+  facet_wrap( ~ REGION, nrow = 4) +
+  theme_minimal()
+
+barea.month.region <- aggregate(BAREA ~ MONTH + REGION,datos,FUN=sum)
+
+ggplot(data = barea.month.region,
+       aes(y=BAREA, x = MONTH)) +
+  geom_bar(stat = 'identity') +
+  facet_wrap(~ REGION, nrow = 3) +
+  theme_minimal()
+
+pca <- prcomp(datos[8:47],scale. = TRUE, center = TRUE)
+summary(pca)
+
+varimax(pca$rotation[,1:7])
+
+#################### PLOTS #####################
+library(viridis)
+
+datos.L1 <- cbind(datos[,c(2,48,49)],(datos[names(datos) %like any% c("%RAIN%","%TEMP%","%RH%")]))
+datos.melt.L1 <- melt(datos.L1, id=c("SIZE","REGION","BAREA"))
+datos.melt.L1$Type <- ifelse(grepl("p85",datos.melt.L1$variable)==TRUE,"P85","Raw")
+
+ggplot(data = datos.melt.L1[#datos.melt.L1$Type=="Raw" & 
+                            datos.melt.L1$variable=="TEMP7dp85",], 
+       aes(x=REGION,y=value,fill=SIZE, z = BAREA))+
+  #geom_hex(bins = 30, color = "gray20") +
+  #stat_summary_hex(bins = 10,color = "gray20") +
+  #geom_violin()+
+  geom_boxplot()+
+  scale_fill_viridis(name = "", 
+                     option = "plasma",
+                     discrete = TRUE) +
+  #facet_wrap(~REGION) +
+  #scale_y_continuous(name= "Log burned area") +
+  #scale_x_continuous(name= "") +
+  #geom_smooth(method='loess',formula=log(y)~x, color = "black", lwd = 0.8) +
+  # geom_vline(xintercept = 0, color = "lightgreen", lty = 2, lwd = 0.7) +
+  # geom_vline(xintercept = -1.64, color = "red", lty = 2, lwd = 0.7) +
+  # geom_vline(xintercept = -1.96, color = "darkred", lty = 2, lwd = 0.7) +
+  # geom_vline(xintercept = -2.33, color = "brown", lty = 2, lwd = 0.7) +
+  theme_bw() +
+  theme(legend.position = "right")
+
+################################
+#OJO QUE LOS DATOS DE 1 DIA LLEVAN VIENTO!!!
+data1d <- na.omit(read.delim2('E:/Estancia_IDL/data/data_1day.txt'))
+data7d <- na.omit(read.delim2('E:/Estancia_IDL/data/data_7day.txt'))
+data30d <- na.omit(read.delim2('E:/Estancia_IDL/data/data_30day.txt'))
+datap85 <- na.omit(read.delim2('E:/Estancia_IDL/data/data_p85.txt'))
+
+####INTENTAR mgPCA + CLUSTER POR REGION
+#SEPARAR INVIERNO DE VERANO???
+
+months <- 1:12#c(6,7,8,9)
+size <- c("Small","Medium","Large")
+time <- c("Ignition day","7-day","30-day")
+
+data <- rbind(data1d[,-18],data7d,data30d)
+
+data <- data[data$SIZE %in% size &
+             data$MONTH %in% months & 
+             data$TIME %in% time,]
+
+group_by(data1d, REGION) %>%
+  filter(BAREA >500) %>%
+  summarise(
+    count = n(),
+    sum = sum(BAREA)
+    # mean = mean(BAREA, na.rm = TRUE),
+    # sd = sd(BAREA, na.rm = TRUE),
+    # median = median(BAREA, na.rm = TRUE),
+    # IQR = IQR(BAREA, na.rm = TRUE)
+  )
+
+data1d[data1d$BAREA>100 & data1d$BAREA<500,]$SIZE <- "Medium"
+data7d[data7d$BAREA>100 & data7d$BAREA<500,]$SIZE <- "Medium"
+data30d[data30d$BAREA>100 & data30d$BAREA<500,]$SIZE <- "Medium"
+
+ggplot(data,aes(x=SIZE,y=FWI,fill=SIZE))+
+  geom_boxplot() +
+  facet_grid(TIME~REGION) +
+  theme_bw()
+
+ggplot(data,aes(x=FWI,y=log(BAREA)))+
+  geom_hex() +
+  facet_grid(TIME~REGION) +
+  scale_fill_viridis()+
+  theme_bw()
+
+ggplot(data,aes(x=FWI,y=log(BAREA)))+
+  geom_hex() +
+  facet_grid(REGION~MONTH) +
+  scale_fill_viridis()+
+  theme_bw()
+  
+datap85 <- datap85[datap85$SIZE %in% size & 
+                     datap85$MONTH %in% months,]
+
+datap85[datap85$BAREA>100 & datap85$BAREA<500,]$SIZE <- "Medium"
+
+data_ <- cbind(data[,c(1:7,18:ncol(data))],(data[names(data) %like any% c("%TEMP%","%RH%","%DC%","%DMC%","%FWI%")]))
+
+datap85_ <- cbind(datap85[,c(1:7,18:ncol(datap85))],
+                  (datap85[names(datap85) %like any% c("%TEMP%","%RH%","%DC%","%DMC%","%FWI%")]))
+
+datap85_1d <- cbind(datap85_[,c(1:10)], 
+                    data_[data_$TIME=="Ignition day",11],
+                    data_[data_$TIME=="Ignition day",12:16]/datap85_[,12:16])
+datap85_7d <- cbind(datap85_[,c(1:10)],
+                    data_[data_$TIME=="7-day",11],
+                    data_[data_$TIME=="7-day",12:16]/datap85_[,12:16])
+datap85_30d <- cbind(datap85_[,c(1:10)],
+                     data_[data_$TIME=="30-day",]$TIME,
+                     data_[data_$TIME=="30-day",12:16]/datap85_[,12:16])
+
+names(datap85_1d)[11] <- "TIME"
+names(datap85_7d)[11] <- "TIME"
+names(datap85_30d)[11] <- "TIME"
+
+data.P <- rbind(datap85_1d,datap85_7d,datap85_30d)
+
+ggplot(data.P,aes(x=FWI,y=log(BAREA)))+
+  geom_hex() +
+  facet_grid(TIME~REGION) +
+  scale_fill_viridis()+
+  theme_bw()
+
+ggplot(data.P,aes(x=FWI,y=log(BAREA)))+
+  geom_hex() +
+  facet_grid(REGION~MONTH) +
+  scale_fill_viridis()+
+  theme_bw()
+
+group_by(data, .dots=c("MONTH","REGION")) %>%
+       filter(TIME == "Ignition day" & BAREA>500) %>%
+       summarize(cor = round(cor(FWI, BAREA),2))%>%
+       spread(MONTH,cor)
+group_by(data, .dots=c("MONTH","REGION")) %>%
+  filter(TIME == "Ignition day" & BAREA>500) %>%
+  summarize(N = n())%>%
+  spread(MONTH,N)
+
+#data$TIME.n <- as.numeric(data$TIME)
+data.melt <- melt(data_, id = names(data_)[c(1:11)])
+data.P.melt <- melt(data.P, id = names(data_)[c(1:11)])
+
+ggplot() +
+  geom_boxplot(data = data.melt[data.melt$REGION=="N",], 
+               aes(x=TIME, y=value, fill=TIME)) +
+  #geom_smooth(method = "loess") +
+  facet_grid(variable ~ MONTH, scales = "free") +
+  theme_bw()
+
+ggplot() +
+  geom_boxplot(data = data.P.melt[data.P.melt$REGION=="NW",], 
+               aes(x=TIME, y=value, fill=TIME)) +
+  #geom_smooth(method = "loess") +
+  facet_grid(variable ~ MONTH) +
+  theme_bw()
+
+for(i in 8:17){
+  
+  dt <- dunn.test(data[,i]/datap85[,i],
+            paste(data$REGION),
+            method = "bonferroni", wrap = TRUE)
+  
+  write.csv2(cbind(round(dt$Z,2),round(dt$P.adjusted,3),dt$comparisons),
+             paste('E:/Estancia_IDL/results/dt.p85',names(data)[i],'REGION','csv',
+                   sep = '.' ), row.names = FALSE)
+  
+}
+
+for(i in 8:17){
+  
+  dt <- dunn.test(data[,i],
+                  paste(data$REGION),
+                  method = "bonferroni", wrap = TRUE)
+  
+  write.csv2(cbind(round(dt$Z,2),round(dt$P.adjusted,3),dt$comparisons),
+             paste('E:/Estancia_IDL/results/dt',names(data)[i],'REGION','csv',
+                   sep = '.' ), row.names = FALSE)
+  
+}
+
+for(i in 8:17){
+  for(r in unique(data$TIME)){
+
+    data.r <- data[data$REGION %in% r,]
+    datap85.r <- data[datap85$REGION %in% r,]
+
+    dt <- dunn.test(data[,i],
+                    paste(data$SIZE,data$REGION,data$TIME),
+                    method = "bonferroni", wrap = TRUE)
+    
+    write.csv2(cbind(round(dt$Z,2),round(dt$P.adjusted,3),dt$comparisons),
+               paste('E:/Estancia_IDL/results/dt',names(data)[i],'TIME','csv',
+                     sep = '.' ), row.names = FALSE)
+    
+  }
+}
+
+data <- data[data$SIZE %in% c("Small","Large") & data$MONTH %in% c(6,7,8,9),]
+# #data$Vdep <- ifelse(datos$SIZE == "Large",1,0)
+# 
+# datos.L1 <- cbind(datos[,c(2,48,49,51)],(datos[names(datos) %like any% c("%RAIN%","%TEMP%","%RH%")]))
+
+w<- c("%TEMP%","%RH%","%DC%","%FFMC%","%WSPEED%")
+
+data.pca <- cbind(data1d[,c(1:7,19:22),],(data1d[names(data1d) %like any% w]))
+names(data.pca)[12:16] <- paste(names(data.pca)[12:16],"0",sep = "")
+data.pca <- cbind(data.pca,(data7d[names(data7d) %like any% w]))
+names(data.pca)[17:20] <- paste(names(data.pca)[17:20],"7",sep = "")
+data.pca <- cbind(data.pca,(data30d[names(data30d) %like any% w]))
+names(data.pca)[21:24] <- paste(names(data.pca)[21:24],"30",sep = "")
+datap85 <- na.omit(read.delim2('E:/Estancia_IDL/data/data_p85.txt'))
+
+data.pca$`TEMP0p85` <- data.pca$`TEMP0`/datap85$TEMPp85
+data.pca$`TEMP7p85` <- data.pca$`TEMP7`/datap85$TEMPp85
+data.pca$`TEMP30p85` <- data.pca$`TEMP30`/datap85$TEMPp85
+
+s <- 500
+
+#10% of fires escaping IA (>50ha)
+# LargeS <- ddply(data.pca[data.pca$BAREA>50,], "REGION", summarise, BA90 = quantile(BAREA, .90))
+# data.pca <- merge(data.pca,LargeS,by ="REGION")
+
+# data.pca <- data.pca[data.pca$SIZE %in% size & 
+#                        data.pca$MONTH %in% months,]
+
+data.pca$DATE <- as.Date(paste(data.pca$YEAR,data.pca$MONTH,data.pca$DAY, sep = "-")) #Crear un ID con la fecha 
+
+# data.pca$code <- paste(data.pca$BAREA,data.pca$DATE, round(data.pca$lat,2))
+# fires.iberia$code <- paste(fires.iberia$BAREA,fires.iberia$DATE,round(fires.iberia$lat,2))
+# fires.iberia.large <- fires.iberia[fires.iberia$BAREA>s,c(5,6)]
+# data.pca <- merge(fires.iberia.large, data.pca,
+#                         by ='code',
+#                         all = FALSE, all.x = FALSE, all.y = FALSE)
+
+data.pca.scale <-  round(scale(data.pca[data.pca$BAREA>s,12:27]),4)
+groups <- data.pca[data.pca$BAREA>s,]$REGION
+
+library(multigroup)
+pca <- mgPCA(data.pca.scale, groups, Scale = FALSE, ncomp = 4)
+pca$exp.var
+
+# plot.data <- pca$loadings.group[[1]]
+plot.data <- pca$loadings.common
+old.names <- row.names(plot.data)
+#old.names[13:16] <- c("T0p85","T7p85","T30p85","WIND")
+y <- c(1,4,7,10,16,2,5,8,11,3,6,9,12,13,14,15)
+old.names <- data.frame(old.names,y)
+row.names(plot.data) <- y
+plot.data <- plot.data[ order(as.numeric(y)), ]
+row.names(plot.data) <- old.names[order(old.names$y),]$old.names
+
+
+# data.plot <- do.call(rbind,pca$loadings.group)
+data.plot <- pca$loadings.common
+Var <- row.names(data.plot)
+data.plot <- data.frame(data.plot)
+data.plot$Var <- Var
+# data.plot$REGION <- c(rep(row.names(pca$exp.var)[1],nrow(pca$loadings.common)),
+#                       rep(row.names(pca$exp.var)[2],nrow(pca$loadings.common)),
+#                       rep(row.names(pca$exp.var)[3],nrow(pca$loadings.common)),
+#                       rep(row.names(pca$exp.var)[4],nrow(pca$loadings.common)))
+
+library(dplyr)
+data.plot <- data.plot %>% 
+  dplyr::mutate(Var = factor(Var,
+                             levels = old.names[order(old.names$y),]$old.names))  
+
+period <- c(0,0,0,0,0,
+            7,7,7,7,
+            30,30,30,30,
+            0,7,30)
+
+vars <- c('T','RH','FFMC','DC','WS',
+          'T','RH','FFMC','DC',
+          'T','RH','FFMC','DC',
+          'Tp85','Tp85','Tp85')
+
+data.plot$Period <- period
+data.plot$Var <- vars
+
+library(reshape)
+data.plot.melt <- melt(data.plot,id=c('Var','Period'))
+
+data.plot.melt[data.plot.melt$variable=="Dim1",]$value <- data.plot.melt[data.plot.melt$variable=="Dim1",]$value *-1
+# data.plot.melt[data.plot.melt$variable=="Dim4",]$value <- data.plot.melt[data.plot.melt$variable=="Dim4",]$value *-1
+# data.plot.melt[data.plot.melt$variable=="Dim3",]$value <- data.plot.melt[data.plot.melt$variable=="Dim3",]$value *-1
+# data.plot.melt[data.plot.melt$variable=="Dim2",]$value <- data.plot.melt[data.plot.melt$variable=="Dim2",]$value *-1
+
+library(ggplot2)
+
+library(dplyr)
+data.plot.melt_ <- data.plot.melt %>% 
+  dplyr::mutate(Var = factor(Var,
+                             levels = c('T','Tp85','RH','DC','FFMC','WS')))   
+
+
+ggplot(data = data.plot.melt_, aes(x=factor(Period), y = value, fill = Var )) +
+  geom_bar(stat = 'identity', color="black", position=position_dodge()) +
+  scale_y_continuous(name='', limits = c(-0.6,0.6)) +
+  scale_x_discrete(name = 'Days before the fire') +
+  scale_fill_manual(values = c('#FA5858','#FAAC58','#819FF7',
+                               '#886A08','#04B45F','#A4A4A4')) +
+  geom_text(aes(label=Var, y = value + 0.05 * sign(value)), color="black",
+            position = position_dodge(0.9), size=2.3)+
+  facet_wrap(~variable) +
+  theme_minimal()
+
+# ggplot(data = data.plot.melt, aes(x=factor(Var), y = value, fill = factor(Period) )) +
+#   geom_bar(stat = 'identity', color="black", position=position_dodge()) +
+#   facet_wrap(~variable) +
+#   theme_minimal()
+
+# ggplot(data = data.plot.melt, aes(x=factor(Period), y = value, fill = Var )) +
+#   geom_bar(stat = 'identity', color="black", position=position_dodge()) +
+#   facet_grid(Period~variable) +
+#   theme_minimal()
+
+
+library(plyr)
+data.plot.melt$Var <- revalue(data.plot.melt$Var, 
+                              c("WSPEED0"="WIND",
+                                "TEMP0p85" = "T0p85",
+                                "TEMP7p85" = "T7p85",
+                                "TEMP30p85" = "T30p85"))
+
+myAng <- seq(-10, -350, length.out = 16) +
+  c(90,90,90,90,90,90,90,90,-90,-90,-90,-90,-90,-90,-90)
+
+pca.plot <-
+  ggplot(data = data.plot.melt, aes(x=Var,y=value,
+                                  group = REGION,
+                                  col = REGION)) +
+  geom_line() +
+  #geom_polygon(fill = NA) +
+  geom_point(pch = 21, size = 1,fill="white",stat = 'identity') +
+  scale_y_continuous(name="",limits = c(-0.7,0.7)) +
+  scale_x_discrete(name="") +
+  scale_colour_brewer(name="",palette = "Set1")+
+  scale_fill_brewer(name="",palette = "Set1") +
+  geom_hline(yintercept = 0, lty = 1) +
+  geom_hline(yintercept = -0.5, lty = 2) +
+  geom_hline(yintercept = 0.5, lty = 2) +
+  facet_wrap(~variable, ncol = 2)+
+  theme_light() +
+  theme(legend.position = "bottom",
+        panel.grid.major.y = element_blank(),
+        axis.text=element_text(size=7),
+        axis.title=element_text(size=10,face="bold"),
+        axis.text.x = element_text(angle=myAng,size = 6.5),
+        panel.border = element_rect(colour = "black", fill=NA, size=1),
+        panel.grid.minor=element_blank(),
+        strip.background = element_rect(color = 'black'),
+        axis.ticks.y = element_blank(),
+        strip.text = element_text(size = 12),
+        axis.text.y = element_blank(),
+        axis.line = element_blank()) + 
+  coord_polar()
+pca.plot
+
+ggsave("E:/Estancia_IDL/results/plots/pca_2000.png",pca.plot,width = 7
+       ,height = 8.5)
+# library(pvclust)
+# 
+# d.pv <- pvclust(t(pca$score.group[[1]]), method = "canberra", 
+#                 method.hclust = "ward.D2", nboot = 5)
+# 
+# plot(d.pv)
+# pvrect(d.pv, alpha = 0.95)
+
+######################### CLUSTERING ########################
+library(factoextra)
+library(NbClust)
+library(fmsb)
+# 
+pca$score.group[[1]][,1] <- pca$score.group[[1]][,1]*-1
+pca$score.group[[2]][,1] <- pca$score.group[[2]][,1]*-1
+pca$score.group[[3]][,1] <- pca$score.group[[3]][,1]*-1
+pca$score.group[[4]][,1] <- pca$score.group[[4]][,1]*-1
+
+# pca$score.group[[1]][,2] <- pca$score.group[[1]][,2]*-1
+# pca$score.group[[2]][,2] <- pca$score.group[[2]][,2]*-1
+# pca$score.group[[3]][,2] <- pca$score.group[[3]][,2]*-1
+# pca$score.group[[4]][,2] <- pca$score.group[[4]][,2]*-1
+# 
+# pca$score.group[[1]][,3] <- pca$score.group[[1]][,3]*-1
+# pca$score.group[[2]][,3] <- pca$score.group[[2]][,3]*-1
+# pca$score.group[[3]][,3] <- pca$score.group[[3]][,3]*-1
+# pca$score.group[[4]][,3] <- pca$score.group[[4]][,3]*-1
+# 
+# pca$score.group[[1]][,5] <- pca$score.group[[1]][,5]*-1
+# pca$score.group[[2]][,5] <- pca$score.group[[2]][,5]*-1
+# pca$score.group[[3]][,5] <- pca$score.group[[3]][,5]*-1
+# pca$score.group[[4]][,5] <- pca$score.group[[4]][,5]*-1
+
+
+
+# pca.scores.E <- as.data.frame(pca$score.group[[1]])
+# pca.scores.E$REGION <- "E"
+# pca.scores.N <- as.data.frame(pca$score.group[[2]])
+# pca.scores.N$REGION <- "N"
+# pca.scores.NW <- as.data.frame(pca$score.group[[3]])
+# pca.scores.NW$REGION <- "NW"
+# pca.scores.SW <- as.data.frame(pca$score.group[[4]])
+# pca.scores.SW$REGION <- "SW"
+# 
+# pca.scores <- rbind(pca.scores.E,pca.scores.N,pca.scores.NW,pca.scores.SW)
+# pca.scores.melt <- melt(pca.scores)
+# 
+# ggplot(pca.scores.melt,aes(x=value,fill=REGION,color=REGION)) +
+#   geom_histogram(aes(y=..density..),bins = 30,alpha=0.5) +
+#   geom_line(stat='density',aes(y=..density..),size=1.2) +
+#   scale_fill_brewer(palette = 'Set1') +
+#   scale_color_brewer(palette = 'Set1') +
+#   geom_vline(xintercept = 0,lty=2) +
+#   facet_grid(variable~REGION) +
+#   theme_bw()
+# 
+# ggplot(pca.scores, aes(x=Dim1,y=Dim4,color=REGION, group=REGION))+
+#   geom_point()+
+#   scale_fill_brewer(palette = 'Set1') +
+#   scale_color_brewer(palette = 'Set1') +
+#   theme_bw()
+
+d <- "euclidean" 
+m <- "ward.D2"
+index <- "all"
+
+# pca.scores <- as.data.frame(pca$score.Global)
+# pca.scores$REGION <- data.pca[data.pca$BAREA>s,]$REGION
+
+nb.pca.E <- NbClust(pca$score.group[[1]],index= index, distance = d, 
+                    min.nc = 2,
+                    max.nc = 10, method = m)
+
+nb.pca.N <- NbClust(pca$score.group[[2]],index= index, distance = d, 
+                    min.nc = 2,
+                    max.nc = 10, method = m)
+
+nb.pca.NW <- NbClust(pca$score.group[[3]],index= index, distance = d, 
+                     min.nc = 2,
+                     max.nc = 10, method = m)
+
+nb.pca.SW <- NbClust(pca$score.group[[4]],index= index, distance = d, 
+                     min.nc = 2,
+                     max.nc = 10, method = m)
+
+######################### CLUSTER PLOTTING ########################
+library(RColorBrewer)
+#library(wesanderson)
+
+v <- c("Dim1" = "#ff5050",
+       "Dim2" = "#ff9900",
+       "Dim3" = "#3399ff",
+       "Dim4" = "#66ff66",
+       "Dim5" = "Red")
+
+# data.radar.agg.max <- rep(0.3,4)#apply(do.call(rbind,pca$score.group),2,max)
+# data.radar.agg.min <- rep(-0.4,4)#apply(do.call(rbind,pca$score.group),2,min)
+# data.radar.temp<- data.frame(rbind(data.radar.agg.max,data.radar.agg.min))
+# names(data.radar.temp) <- colnames(pca$score.group[[1]])
+
+Min <- -0.6
+Max <- 0.6
+interv <- 0.15
+
+data.radar <- as.data.frame(cbind(pca.scores[pca.scores$REGION=='E',1:4],
+                                  nb.pca.E$Best.partition))
+# data.radar$Dim5 <- NA
+names(data.radar)[5] <- "Cluster"
+# data.radar.agg <- aggregate(.~Cluster, data.radar, median)
+# data.radar.agg.E <- rbind(data.radar.temp,data.radar.agg[,2:5])
+data.radar.melt <- melt(data.radar, id = "Cluster")
+data.radar.melt$Cluster <- paste('E',data.radar.melt$Cluster,sep = '-')
+
+cluster.E <- 
+  ggplot(data = data.radar.melt, aes(x=variable,y=value, fill=variable,color=variable)) +
+  geom_violin(alpha = 0.5) +
+  geom_boxplot(width=0.3,fill='white',outlier.shape = NA,color="gray30") +
+  # geom_hline(yintercept = seq(Min,Max,interv), lty = 2, color='gray') +
+  geom_hline(yintercept = 0, lty = 2, color='gray50') +
+  facet_wrap(~Cluster, ncol = 2) +
+  #scale_fill_brewer(palette = 'Set2') +
+  scale_fill_manual(name='',values = v) +
+  scale_color_manual(name='',values = v) +
+  # scale_y_continuous(limits = c(Min,Max)) +
+  #ggtitle("East region (E)") +
+  theme_light() + 
+  theme(legend.position = "right",
+        plot.title = element_text(hjust = 0.5),
+        panel.grid.major = element_blank()) 
+  # coord_polar(start = 0.63) + 
+  # annotate("segment", x = "Dim5", xend = "Dim5", y = Min, yend = Max,
+  #          colour = "gray50") +
+  # annotate("text", x = "Dim5", y = 0, label = "0",
+  #                                     size=2,vjust = 0.5) +
+  # annotate("text", x = "Dim5", y = Max, label = Max,
+  #          size=2,vjust = 0.5) +
+  # annotate("text", x = "Dim5", y = Min, label = Min,
+  #          size=2,vjust = 0.5) 
+  
+cluster.E 
+
+ggsave(paste('E:/Estancia_IDL/results/plots/cluster_E_',s,'.png',sep = ''),
+       cluster.E,
+       width = 6,height = 6,dpi = 600)
+
+data.radar <- as.data.frame(cbind(pca$score.group[[2]],
+                                  nb.pca.N$Best.partition))
+names(data.radar)[5] <- "Cluster"
+# data.radar.agg <- aggregate(.~Cluster, data.radar, median)
+# data.radar.agg.N <- rbind(data.radar.temp,data.radar.agg[,2:5])
+
+data.radar.melt <- melt(data.radar, id = "Cluster")
+data.radar.melt$Cluster <- paste('N',data.radar.melt$Cluster,sep = '-')
+
+cluster.N <-
+  ggplot(data = data.radar.melt, aes(x=variable,y=value, fill=variable, color=variable)) +
+  geom_violin(alpha = 0.5) +
+  geom_boxplot(width=0.3,fill='white',outlier.shape = NA,color="gray30") +
+  geom_hline(yintercept = seq(Min,Max,interv), lty = 2, color='gray') +
+  geom_hline(yintercept = 0, lty = 2, color='gray50') +
+  facet_wrap(~Cluster, ncol = 2) +
+  #scale_fill_brewer(palette = 'Set2') +
+  scale_fill_manual(name='',values = v) +
+  scale_color_manual(name='',values = v) +
+  scale_y_continuous(limits = c(Min,Max)) +
+  #ggtitle("North region (N)") +
+  theme_light() + 
+  theme(legend.position = "right",
+        plot.title = element_text(hjust = 0.5),
+        panel.grid.major = element_blank(),
+        strip.background = element_rect(color = 'black'),
+        #panel.grid.major.x = element_line(color='black'),
+        axis.ticks = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text.x = element_blank(),
+        axis.title = element_blank()) +
+  coord_polar(start = 0.63) + 
+  # annotate("segment", x = "Dim5", xend = "Dim5", y = Min, yend = Max,
+  #          colour = "gray50") +
+  annotate("text", x = "Dim5", y = 0, label = "0",
+           size=2,vjust = 0.5) +
+  annotate("text", x = "Dim5", y = Max, label = Max,
+           size=2,vjust = 0.5) +
+  annotate("text", x = "Dim5", y = Min, label = Min,
+           size=2,vjust = 0.5) 
+cluster.N
+
+ggsave(paste('E:/Estancia_IDL/results/plots/cluster_N_',s,'.png',sep = ''),cluster.N,
+       width = 5.9,height = 3,dpi = 600)
+
+data.radar <- as.data.frame(cbind(pca$score.group[[3]],
+                                  nb.pca.NW$Best.partition))
+names(data.radar)[5] <- "Cluster"
+# data.radar.agg <- aggregate(.~Cluster, data.radar, median)
+# data.radar.agg.NW <- rbind(data.radar.temp,data.radar.agg[,2:5])
+
+data.radar.melt <- melt(data.radar, id = "Cluster")
+data.radar.melt$Cluster <- paste('NW',data.radar.melt$Cluster,sep = '-')
+
+cluster.NW <- ggplot(data = data.radar.melt, aes(x=variable,y=value, fill=variable,color=variable)) +
+  geom_violin(alpha = 0.5) +
+  geom_boxplot(width=0.3,fill='white',outlier.shape = NA,color="gray30") +
+  geom_hline(yintercept = seq(Min,Max,interv), lty = 2, color='gray') +
+  geom_hline(yintercept = 0, lty = 2, color='gray50') +
+  facet_wrap(~Cluster, ncol = 2) +
+  #scale_fill_brewer(palette = 'Set2') +
+  scale_fill_manual(name='',values = v) +
+  scale_color_manual(name='',values = v) +
+  scale_y_continuous(limits = c(Min,Max)) +
+  #ggtitle("Northwest region (NW)") +
+  theme_light() + 
+  theme(legend.position = "right",
+        plot.title = element_text(hjust = 0.5),
+        panel.grid.major = element_blank(),
+        strip.background = element_rect(color = 'black'),
+        #panel.grid.major.x = element_line(color='black'),
+        axis.ticks = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text.x = element_blank(),
+        axis.title = element_blank()) +
+  coord_polar(start = 0.63) + 
+  # annotate("segment", x = "Dim5", xend = "Dim5", y = Min, yend = Max,
+  #          colour = "gray50") +
+  annotate("text", x = "Dim5", y = 0, label = "0",
+           size=2,vjust = 0.5) +
+  annotate("text", x = "Dim5", y = Max, label = Max,
+           size=2,vjust = 0.5) +
+  annotate("text", x = "Dim5", y = Min, label = Min,
+           size=2,vjust = 0.5) 
+
+cluster.NW 
+ggsave(paste('E:/Estancia_IDL/results/plots/cluster_NW_',s,'.png',sep = ''),cluster.NW,
+       width = 6,height = 9,dpi = 600)
+
+data.radar <- as.data.frame(cbind(pca$score.group[[4]],
+                                  nb.pca.SW$Best.partition))
+names(data.radar)[5] <- "Cluster"
+# data.radar.agg <- aggregate(.~Cluster, data.radar, median)
+# data.radar.agg.SW <- rbind(data.radar.temp,data.radar.agg[,2:5])
+
+data.radar.melt <- melt(data.radar, id = "Cluster")
+data.radar.melt$Cluster <- paste('SW',data.radar.melt$Cluster,sep = '-')
+
+cluster.SW <-ggplot(data = data.radar.melt, aes(x=variable,y=value, fill=variable,color=variable)) +
+  geom_violin(alpha = 0.5) +
+  geom_boxplot(width=0.3,fill='white',outlier.shape = NA,color="gray30") +
+  geom_hline(yintercept = seq(Min,Max,interv), lty = 2, color='gray') +
+  geom_hline(yintercept = 0, lty = 2, color='gray50') +
+  facet_wrap(~Cluster, ncol = 2) +
+  #scale_fill_brewer(palette = 'Set2') +
+  scale_fill_manual(name='',values = v) +
+  scale_color_manual(name='',values = v) +
+  scale_y_continuous(limits = c(Min,Max)) +
+  #ggtitle("Southwestern region (SW)") +
+  theme_light() + 
+  theme(legend.position = "right",
+        plot.title = element_text(hjust = 0.5),
+        panel.grid.major = element_blank(),
+        strip.background = element_rect(color = 'black'),
+        #panel.grid.major.x = element_line(color='black'),
+        axis.ticks = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text.x = element_blank(),
+        axis.title = element_blank()) +
+  coord_polar(start = 0.63) + 
+  # annotate("segment", x = "Dim5", xend = "Dim5", y = Min, yend = Max,
+  #          colour = "gray50") +
+  annotate("text", x = "Dim5", y = 0, label = "0",
+           size=2,vjust = 0.5) +
+  annotate("text", x = "Dim5", y = Max, label = Max,
+           size=2,vjust = 0.5) +
+  annotate("text", x = "Dim5", y = Min, label = Min,
+           size=2,vjust = 0.5) 
+
+cluster.SW
+
+ggsave(paste('E:/Estancia_IDL/results/plots/cluster_SW_',s,'.png',sep = ''),cluster.SW,
+       width = 6,height = 9,dpi=600)
+
+# cols <- brewer.pal(6, "Set1")
+# 
+# par(mfrow=c(2,2),oma = c(5,4,0,0) + 0.25,
+#     mar = c(0,0,1,1) + 0.2)
+# radarchart(data.radar.agg.NW[c(1,2,3:nrow(data.radar.agg.NW)),],
+#            axistype=0, 
+#            pcol=cols , pfcol=rgb(0.2,0.5,0.5,0) , plwd=2 , 
+#            cglcol="grey", cglty=1, axislabcol="grey", cglwd=0.3,
+#            vlcex=0.8 , title = "REGION NW",centerzero = TRUE)
+# 
+# radarchart(data.radar.agg.N[c(1,2,3:nrow(data.radar.agg.N)),],
+#            axistype=0, 
+#            pcol=cols, pfcol=rgb(0.2,0.5,0.5,0) , plwd=2 , 
+#            cglcol="grey", cglty=1, axislabcol="grey", cglwd=0.3,
+#            vlcex=0.8 , title = "REGION N",centerzero = TRUE)
+# 
+# radarchart(data.radar.agg.SW[c(1,2,3:nrow(data.radar.agg.SW)),],
+#            axistype=0, 
+#            pcol=cols , pfcol=rgb(0.2,0.5,0.5,0) , plwd=2 , 
+#            cglcol="grey", cglty=1, axislabcol="grey", cglwd=0.3,
+#            vlcex=0.8 , title = "REGION SW",centerzero = TRUE)
+# 
+# radarchart(data.radar.agg.E[c(1,2,3:nrow(data.radar.agg.E)),],
+#            axistype=0, 
+#            pcol=cols , pfcol=rgb(0.2,0.5,0.5,0) , plwd=2 , 
+#            cglcol="grey", cglty=1, axislabcol="grey", cglwd=0.3,
+#            vlcex=0.8 , title = "REGION E",centerzero = TRUE)
+
+
+
+######################### CLUSTER MONTHLY BAREA ########################
+# data.plot.SW <- as.data.frame(cbind(data.pca[data.pca$REGION=="SW" & data.pca$BAREA>120,],nb.pca.SW$Best.partition))
+# names(data.plot.SW)[ncol(data.plot.SW)] <- "Cluster" 
+# barea.plot.SW <- aggregate(BAREA ~ MONTH + Cluster, data.plot.SW, FUN = sum)
+# nfire.plot.SW <- aggregate(BAREA ~ MONTH + Cluster, data.plot.SW, FUN = length)
+# 
+# ggplot() +
+#   geom_bar(data = barea.plot.SW, aes(x=factor(MONTH),
+#                                           y=BAREA/1200,
+#                                      fill= factor(Cluster)),
+#            color = "black",
+#            stat = 'identity') +
+#   geom_line(data = nfire.plot.SW, aes(x=MONTH,y=BAREA),
+#             color = "gray20",lwd=0.5,lty=2) +
+#   scale_y_continuous(name = "",
+#                      sec.axis = sec_axis(~ . * 1200,name = "")) +
+#   #scale_fill_brewer(name = "", palette = "Set1") +
+#   scale_x_discrete(name="Month") +
+#   facet_wrap(~Cluster,ncol = 1) +
+#   theme_bw()+
+#   theme(
+#     panel.grid.minor = element_blank(),
+#     legend.position = "none"
+#   )
+
+region <- readOGR('E:/Estancia_Lisboa/NUTS/NUTS3_Iberia.shp')
+region.dis <- readOGR('E:/Estancia_Lisboa/NUTS/regions_dis.shp')
+hill <- raster('E:/Estancia_Lisboa/dem.tif')
+hill.m <- rasterToPoints(hill)
+hill.df <-  data.frame(hill.m)
+colnames(hill.df) <- c("lon", "lat", "hill")
+
+data.plot.E <- as.data.frame(cbind(data.pca[data.pca$REGION=="E" & data.pca$BAREA>s,],nb.pca.E$Best.partition))
+names(data.plot.E)[ncol(data.plot.E)] <- "Cluster" 
+barea.plot.E <- aggregate(BAREA ~ MONTH + Cluster, data.plot.E, FUN = sum)
+nfire.plot.E <- aggregate(BAREA ~ MONTH + Cluster, data.plot.E, FUN = length)
+nfire.plot.E$REGION <- "E"
+barea.plot.E$REGION <- "E"
+
+cluster.hist.E <- ggplot()+
+  geom_bar(data = nfire.plot.E, aes(x=factor(MONTH),y=BAREA,fill= factor(Cluster)),
+           color = "black",
+           stat = 'identity') +
+  # geom_bar(data = barea.plot.E, aes(x=factor(MONTH),
+  #                                    y=BAREA/1200,
+  #                                    fill= factor(Cluster)),
+  #          color = "black",
+  #          stat = 'identity') +
+  # geom_line(data = nfire.plot.E, aes(x=MONTH,y=BAREA),
+  #           color = "gray20",lwd=0.5,lty=2) +
+  scale_y_continuous(name = "")+#,
+                     # sec.axis = sec_axis(~ . * 1200,name = "")) +
+  scale_fill_brewer(name = "", palette = "Paired") +
+  scale_x_discrete(name="Month") +
+  #facet_wrap(~Cluster, ncol = 1) +
+  theme_bw()+
+  theme(
+    panel.grid.minor = element_blank(),
+    legend.position = "none"
+  )
+cluster.hist.E
+ggsave('E:/Estancia_IDL/results/plots/cluster.hist.E_500.png',
+       cluster.hist.E,
+       width = 6,
+       height = 2.5)
+
+map.E <- ggplot() +
+  # geom_raster(data = hill.df, aes(lon, lat, fill = hill), alpha = .45) +
+  # scale_fill_gradientn(colours = grey.colors(100)) +
+  # stat_summary_hex(data=data.plot.E, aes(x=lon, y = lat, z=log(BAREA))) +
+  geom_polygon(data = region, 
+                aes(x = long, y = lat, group = group),color = 'gray60',fill = NA) +
+  geom_jitter(data=data.plot.E, aes(x=lon, y = lat, color=log(BAREA)),
+              size = 0.9) +
+  geom_polygon(data = region.dis[region.dis$REGION=='E,'], 
+               aes(x = long, y = lat, group = group),color = 'gray20',fill = NA) +
+  scale_color_viridis(option = 'magma')+
+  facet_wrap(~Cluster)+
+  coord_equal() +
+  theme_bw()
+
+map.E
+
+
+data.plot.NW <- as.data.frame(cbind(data.pca[data.pca$REGION=="NW" & data.pca$BAREA>s,],nb.pca.NW$Best.partition))
+names(data.plot.NW)[ncol(data.plot.NW)] <- "Cluster" 
+barea.plot.NW <- aggregate(BAREA ~ MONTH + Cluster, data.plot.NW, FUN = sum)
+nfire.plot.NW <- aggregate(BAREA ~ MONTH + Cluster, data.plot.NW, FUN = length)
+nfire.plot.NW$REGION <- "NW"
+barea.plot.NW$REGION <- "NW"
+
+cluster.hist.NW <- ggplot()+ 
+  geom_bar(data = nfire.plot.NW, aes(x=factor(MONTH),y=BAREA,fill= factor(Cluster)),
+           color = "black",
+           stat = 'identity') +
+  # geom_bar(data = barea.plot.E, aes(x=factor(MONTH),
+  #                                    y=BAREA/1200,
+  #                                    fill= factor(Cluster)),
+  #          color = "black",
+  #          stat = 'identity') +
+  # geom_line(data = nfire.plot.E, aes(x=MONTH,y=BAREA),
+  #           color = "gray20",lwd=0.5,lty=2) +
+  scale_y_continuous(name = "")+#,
+  # sec.axis = sec_axis(~ . * 1200,name = "")) +
+  scale_fill_brewer(name = "", palette = "Paired") +
+  scale_x_discrete(name="Month") +
+  #facet_wrap(~Cluster, ncol = 1) +
+  theme_bw()+
+  theme(
+    panel.grid.minor = element_blank(),
+    legend.position = "none"
+  )
+cluster.hist.NW
+
+ggsave('E:/Estancia_IDL/results/plots/cluster.hist.NW_500.png',
+       cluster.hist.NW,
+       width = 5,
+       height = 6)
+
+map.NW <- ggplot() +
+  # stat_summary_hex(data=data.plot.NW, aes(x=lon, y = lat, z=log(BAREA)),
+  #                  bins = 15) +
+  geom_polygon(data = region, 
+               aes(x = long, y = lat, group = group),
+               color = 'gray50',fill = NA) +
+  geom_polygon(data = region[region$REGION=='NW',], 
+               aes(x = long, y = lat, group = group),
+               color = 'gray20',fill = NA) +
+  geom_jitter(data=data.plot.NW, aes(x=lon, y = lat, color=log(BAREA)),
+              size = 0.9) +
+  scale_color_viridis(option = 'magma')+
+  facet_wrap(~Cluster,ncol = 2)+
+  coord_equal() +
+  theme_bw()
+
+map.NW
+
+data.plot.SW <- as.data.frame(cbind(data.pca[data.pca$REGION=="SW" & data.pca$BAREA>s,],nb.pca.SW$Best.partition))
+names(data.plot.SW)[ncol(data.plot.SW)] <- "Cluster" 
+barea.plot.SW <- aggregate(BAREA ~ MONTH + Cluster, data.plot.SW, FUN = sum)
+nfire.plot.SW <- aggregate(BAREA ~ MONTH + Cluster, data.plot.SW, FUN = length)
+nfire.plot.SW$REGION <- "SW"
+barea.plot.SW$REGION <- "SW"
+
+cluster.hist.SW <- ggplot()+ 
+  geom_bar(data = nfire.plot.SW, aes(x=factor(MONTH),y=BAREA,fill= factor(Cluster)),
+           color = "black",
+           stat = 'identity') +
+  # geom_bar(data = barea.plot.E, aes(x=factor(MONTH),
+  #                                    y=BAREA/1200,
+  #                                    fill= factor(Cluster)),
+  #          color = "black",
+  #          stat = 'identity') +
+  # geom_line(data = nfire.plot.E, aes(x=MONTH,y=BAREA),
+  #           color = "gray20",lwd=0.5,lty=2) +
+  scale_y_continuous(name = "")+#,
+  # sec.axis = sec_axis(~ . * 1200,name = "")) +
+  scale_fill_brewer(name = "", palette = "Paired") +
+  scale_x_discrete(name="Month") +
+  #facet_wrap(~Cluster, ncol = 1) +
+  theme_bw()+
+  theme(
+    panel.grid.minor = element_blank(),
+    legend.position = "none"
+  )
+cluster.hist.SW
+ggsave('E:/Estancia_IDL/results/plots/cluster.hist.SW_500.png',
+       cluster.hist.SW,
+       width = 5,
+       height = 6)
+
+map.SW <- ggplot(data=data.plot.SW, aes(x=lon,y = lat)) +
+  geom_hex() +
+  geom_polygon(data = region, 
+               aes(x = long, y = lat, group = group),color = 'black',fill = NA) +
+  scale_fill_viridis()+
+  facet_wrap(~Cluster)+
+  coord_equal() +
+  theme_bw()
+
+map.SW
+
+data.plot.N <- as.data.frame(cbind(data.pca[data.pca$REGION=="N" & data.pca$BAREA>s,],nb.pca.N$Best.partition))
+names(data.plot.N)[ncol(data.plot.N)] <- "Cluster" 
+barea.plot.N <- aggregate(BAREA ~ MONTH + Cluster, data.plot.N, FUN = sum)
+nfire.plot.N <- aggregate(BAREA ~ MONTH + Cluster, data.plot.N, FUN = length)
+nfire.plot.N$REGION <- "N"
+barea.plot.N$REGION <- "N"
+
+cluster.hist.N <- ggplot()+ 
+  geom_bar(data = nfire.plot.N, aes(x=factor(MONTH),y=BAREA,fill= factor(Cluster)),
+                    color = "black",
+                    stat = 'identity') +
+  # geom_bar(data = barea.plot.E, aes(x=factor(MONTH),
+  #                                    y=BAREA/1200,
+  #                                    fill= factor(Cluster)),
+  #          color = "black",
+  #          stat = 'identity') +
+  # geom_line(data = nfire.plot.E, aes(x=MONTH,y=BAREA),
+  #           color = "gray20",lwd=0.5,lty=2) +
+  scale_y_continuous(name = "")+#,
+  # sec.axis = sec_axis(~ . * 1200,name = "")) +
+  scale_fill_brewer(name = "", palette = "Paired") +
+  scale_x_discrete(name="Month") +
+  #facet_wrap(~Cluster, ncol = 1) +
+  theme_bw()+
+  theme(
+    panel.grid.minor = element_blank(),
+    legend.position = "none"
+  )
+cluster.hist.N
+
+ggsave('E:/Estancia_IDL/results/plots/cluster.hist.N_500.png',
+       cluster.hist.N,
+       width = 5,
+       height = 14)
+
+map.N <- ggplot(data=data.plot.N, aes(x=lon,y = lat)) +
+  geom_hex() +
+  geom_polygon(data = region, 
+               aes(x = long, y = lat, group = group),color = 'black',fill = NA) +
+  scale_fill_viridis()+
+  facet_wrap(~Cluster)+
+  coord_equal() +
+  theme_bw()
+
+map.N
+
+#PROBAR A JUNTAR TODO EN UN SOLO GRAFICO CON FACET_GRID
+
+nfire.plot <- rbind(nfire.plot.SW,nfire.plot.E,nfire.plot.N,nfire.plot.NW)
+barea.plot <- rbind(barea.plot.SW,barea.plot.E,barea.plot.N,barea.plot.NW)
+
+cluster.hist.nfire <- ggplot()+ 
+  geom_bar(data = nfire.plot, aes(x=factor(MONTH),y=BAREA,fill= factor(Cluster)),
+           color = NA,
+           stat = 'identity') +
+  scale_y_continuous(name = "")+
+  scale_fill_brewer(name = "", palette = "Paired") +
+  scale_x_discrete(name="Month") +
+  facet_wrap(~REGION, ncol = 2) +
+  theme_bw()+
+  theme(
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom"
+  )
+cluster.hist.nfire
+ggsave('E:/Estancia_IDL/results/plots/nfire_cluster.png',
+       cluster.hist.nfire,width = 8,height = 6.5,dpi = 600)
+
+cluster.hist <- ggplot()+ 
+  geom_bar(data = barea.plot, aes(x=factor(MONTH),y=BAREA/100,fill= factor(Cluster)),
+           color = "black",
+           stat = 'identity') +
+  scale_y_continuous(name = "")+
+  scale_fill_brewer(name = "", palette = "Paired") +
+  scale_x_discrete(name="Month") +
+  facet_wrap(~REGION, ncol = 2) +
+  theme_bw()+
+  theme(
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom"
+  )
+cluster.hist
+
+#############################
+library(scales)
+data.plot.E.cause <- aggregate(code ~ CAUSA + Cluster,data.plot.E,FUN=length)
+
+data.plot.E.cause.s <- aggregate(code ~ Cluster,data.plot.E.cause,FUN=sum)
+data.plot.E.cause <- merge(data.plot.E.cause,data.plot.E.cause.s,by='Cluster')
+data.plot.E.cause$code <- round(data.plot.E.cause$code.x/data.plot.E.cause$code.y*100,1)
+
+
+ggplot(data.plot.E.cause, aes(x=1, y=code, fill=CAUSA, group=Cluster))+
+  geom_bar(width = 1, stat = "identity")+
+  scale_y_continuous(labels=scales::percent) +
+  geom_text(aes(x = 1.6, group = Cluster,
+               label = paste(code)), size=5, 
+               position = position_stack(vjust = 0.5)) +
+  coord_polar("y", start=0)  +
+  theme_minimal() +
+  theme(axis.text.x=element_blank()) +  facet_wrap(~Cluster) 
+
+
+data.plot.NW.cause <- aggregate(code ~ CAUSA + Cluster,data.plot.NW,FUN=length)
+
+data.plot.NW.cause.s <- aggregate(code ~ Cluster,data.plot.NW.cause,FUN=sum)
+data.plot.NW.cause <- merge(data.plot.NW.cause,data.plot.NW.cause.s,by='Cluster')
+data.plot.NW.cause$code <- round(data.plot.NW.cause$code.x/data.plot.NW.cause$code.y*100,1)
+
+
+ggplot(data.plot.NW.cause, aes(x=1, y=code, fill=CAUSA, group=Cluster))+
+  geom_bar(width = 1, stat = "identity")+
+  scale_y_continuous(labels=scales::percent) +
+  geom_text(aes(x = 1.6, group = Cluster,
+                label = paste(code)), size=5, 
+            position = position_stack(vjust = 0.5)) +
+  coord_polar("y", start=0)  +
+  theme_minimal() +
+  theme(axis.text.x=element_blank()) +  facet_wrap(~Cluster) 
+
+
+#######################################################
+data.radar.agg.max <- rep(1.5,16)#apply(do.call(rbind,pca$score.group),2,max)
+data.radar.agg.min <- rep(-3,16)#apply(do.call(rbind,pca$score.group),2,min)
+data.radar.temp<- data.frame(rbind(data.radar.agg.max,data.radar.agg.min))
+names(data.radar.temp) <- names(data.pca[data.pca$REGION=="E" & data.pca$BAREA>s,c(12:27)])
+
+data.radar <- as.data.frame(cbind(data.pca.scale[groups=="E",],
+                                  nb.pca.E$Best.partition))
+names(data.radar)[17] <- "Cluster"
+data.radar.agg <- aggregate(.~Cluster, data.radar, mean)
+data.radar.agg.E <- rbind(data.radar.temp,data.radar.agg[,2:17])
+data.radar.agg.E.2 <- data.radar.agg.E[,c(1,6,10,2,7,11,3,8,12,4,9,13,14,15,16,5)]
+
+radarchart(data.radar.agg.E.2[c(1,2,3:nrow(data.radar.agg.E)),],
+           axistype=0, 
+           pcol=cols , pfcol=rgb(0.2,0.5,0.5,0) , plwd=2 , 
+           cglcol="grey", cglty=1, axislabcol="grey", cglwd=0.3,
+           vlcex=0.8 , title = "REGION E",centerzero = FALSE)
+
+
+DunnTest(data.plot.E$BAREA,
+          data.plot.E$Cluster,
+          method = "bonferroni", wrap = TRUE)
+
+
+DunnTest(data.plot.N$BAREA,
+          data.plot.N$Cluster,
+          method = "bonferroni", wrap = TRUE)
+
+DunnTest(data.plot.NW$BAREA,
+          data.plot.NW$Cluster,
+          method = "bonferroni", wrap = TRUE)
+
+DunnTest(data.plot.SW$BAREA,
+          data.plot.SW$Cluster,
+          method = "bonferroni", wrap = TRUE)
+
+data.plot.cluster <- rbind(data.plot.E,
+                           data.plot.SW,
+                           data.plot.NW,
+                           data.plot.N)
+
+data.plot.cluster$GROUP <- paste(data.plot.cluster$REGION,
+                                 data.plot.cluster$Cluster,sep = '-')
+
+dt <- dunn.test(data.plot.cluster$BAREA,
+          data.plot.cluster$GROUP,
+          method = "bh",list = TRUE)
+
+pairwise.wilcox.test(
+  data.plot.cluster$BAREA,
+  data.plot.cluster$GROUP,
+                     p.adjust.method = "bonf",alternative = "less")
+
+table(data.plot.cluster$GROUP)
+aggregate(BAREA~GROUP,data.plot.cluster,FUN=median)
+
+ggplot(data.plot.cluster,aes(x=Cluster,y=log(BAREA),group=Cluster,
+                             color=REGION))+
+  geom_boxplot()+
+  scale_color_brewer(name='',palette = 'Set1')+
+  labs(x="",y='Burned area (log)')+
+  facet_wrap(~REGION)+
+  theme_bw()+
+  theme(panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        panel.grid.major.y = element_line(linetype = 2,color='gray40'),
+        panel.grid.minor.y = element_blank())
+
+library(dplyr)
+detach("package:plyr", unload=TRUE) 
+write.csv2(
+  group_by(data.plot.cluster, GROUP) %>%
+    summarise(
+      count = n(),
+      sum = sum(BAREA),
+      mean = mean(BAREA, na.rm = TRUE),
+      sd = sd(BAREA, na.rm = TRUE),
+      median = median(BAREA, na.rm = TRUE),
+      IQR = IQR(BAREA, na.rm = TRUE)
+    ),
+  'E:/Estancia_IDL/results/cluster_summary.csv',row.names = FALSE
+)
+
+#################### MAPS & PLOTS #####################
+library(rgdal)
+library(ggplot2)
+#library(dplyr)
+
+# regions <- readOGR('E:/Estancia_Lisboa/NUTS/NUTS3_Iberia.shp')
+regions <- readOGR('E:/Estancia_Lisboa/NUTS/regions_dis.shp')
+regions <- regions@data
+regions$area <- as.numeric(as.character(regions$area))
+
+regions_df <- broom::tidy(regions, region = "REGION")
+
+cols <- brewer.pal(n = 4, name = "Set1")
+
+study.area <- ggplot() + 
+  geom_polygon(data = regions_df, 
+               aes(x = long, y = lat, group = group, fill = id), 
+               colour = "gray25") + 
+  geom_polygon(data= regions, 
+               aes(x = long, y = lat, group = group, fill = NA), 
+               colour = "gray25") +
+  #scale_fill_brewer(name = "", palette = "Set1") +
+  scale_fill_manual(values = c(cols[4], cols[2], cols[1],cols[3])) +
+  scale_y_continuous(name="") +
+  scale_x_continuous(name="") +
+  coord_equal() +
+  theme_bw() +
+  theme(legend.position = 'none')
+
+ggsave('E:/Estancia_IDL/results/plots/study_area.png',study.area,
+       width = 7,height = 4)
+
+data1d <- na.omit(read.delim2('E:/Estancia_IDL/data/data_1day.txt'))
+data1d$REGION <- factor(data1d$REGION , c("NW", "N", "SW", "E"))
+
+ggplot(data = data1d, aes(x=factor(MONTH), y=log(BAREA), fill = REGION)) +
+  geom_violin() +
+  geom_boxplot(width =0.2,fill="white",outlier.shape = 20) +
+  scale_fill_brewer(name = "", palette = "Set1") +
+  scale_y_continuous(name="Log fire size") +
+  scale_x_discrete(name="Month") +
+  geom_hline(yintercept = log(500)) +
+  facet_wrap(~REGION) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+barea.month.region <- aggregate(BAREA~MONTH+REGION,
+                                data1d,
+                                FUN = sum)
+barea.month.region <- merge(barea.month.region,
+                            regions,
+                            'REGION')
+barea.month.region$NArea <- barea.month.region$BAREA/barea.month.region$area
+barea.month.region$Code <- paste(barea.month.region$REGION,barea.month.region$MONTH)
+
+nfire.month.region <- aggregate(BAREA~MONTH+REGION,
+                                data1d,
+                                FUN = length)
+large.month.region <- aggregate(BAREA~MONTH+REGION,
+                                data1d[data1d$BAREA>500,],
+                                FUN = sum)
+large.month.region <- merge(large.month.region,
+                            regions,
+                            'REGION')
+large.month.region$NAreaLarge <- large.month.region$BAREA/large.month.region$area
+large.month.region$Code <- paste(large.month.region$REGION,large.month.region$MONTH)
+
+month.region <- merge(barea.month.region,
+                      large.month.region,
+                      "Code", all = TRUE)
+
+fire.regime <- ggplot() +
+  geom_bar(data = month.region, aes(x=factor(MONTH.x),
+                                          y=NArea*10,
+                                          fill=REGION.x),
+           stat = 'identity') +
+  # geom_bar(data = month.region, aes(x=MONTH.x,y=NAreaLarge/NArea),
+  #          stat = 'identity', fill = NA, color = 'black') +
+  # geom_point(data = month.region, aes(x=MONTH.x,y=NAreaLarge/NArea),
+  #           color = "gray20",size=2,pch=20) +
+  geom_point(data = month.region, aes(x=MONTH.x,y=NAreaLarge/NArea),
+             color = "gray20",size=5,pch='_') +
+  scale_y_continuous(name = "Ratio large fires",
+                     sec.axis = sec_axis(~ . * 0.1,name = "Normalized burned area"),limits = c(0,1)) +
+  scale_fill_brewer(name = "", palette = "Set1") +
+  scale_x_discrete(name='Month',labels = c('Ja','F','M','Ap','My','J','Jl','Ag','S','O','N','D'))+
+  facet_wrap(~REGION.x) +
+  theme_bw()+
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    legend.position = "none"
+  )
+
+fire.regime
+
+ggsave('E:/Estancia_IDL/submission/review/fire_regime.png',fire.regime,
+       width = 8,height = 4)
+
+# fire.regime <- ggplot() +
+#   geom_bar(data = month.region, aes(x=MONTH.x,y=NAreaLarge/NArea,fill=REGION.x),
+#            stat = 'identity') +
+#   geom_line(data = month.region, aes(x=factor(MONTH.x),group = REGION.x,
+#                                      y=NArea*5), color = "gray20",lwd=0.5,lty=1) +
+#   scale_y_continuous(name = "",
+#                      sec.axis = sec_axis(~ . * 0.05,name = "")) +
+#   scale_fill_brewer(name = "", palette = "Set1") +
+#   scale_x_discrete(name="Month") +
+#   facet_wrap(~REGION.x) +
+#   theme_bw()+
+#   theme(
+#     panel.grid.minor = element_blank(),
+#     legend.position = "none"
+#   )
+# fire.regime <- ggplot() +
+#   geom_bar(data = barea.month.region, aes(x=factor(MONTH),
+#                                           y=BAREA/area,
+#                                           fill=REGION),
+#            stat = 'identity') +
+#   geom_line(data = large.month.region, aes(x=MONTH,y=BAREA/area),
+#             color = "gray20",lwd=0.5,lty=2) +
+#   # scale_y_continuous(name = "",
+#   #                    sec.axis = sec_axis(~ . * 60,name = "")) +
+#   scale_fill_brewer(name = "", palette = "Set1") +
+#   scale_x_discrete(name="Month") +
+#   facet_wrap(~REGION) +
+#   theme_bw()+
+#   theme(
+#     panel.grid.minor = element_blank(),
+#     legend.position = "none"
+#   )
+# 
+
+

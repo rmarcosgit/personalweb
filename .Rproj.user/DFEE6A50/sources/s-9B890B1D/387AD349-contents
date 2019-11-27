@@ -1,0 +1,33 @@
+library(rgdal)
+library(raster)
+library(multigroup)
+library(dplyr)
+
+setwd('E:/Estancia_IDL/')
+
+datos <- read.csv2('fires.iberia.sel.csv')
+cod_region <- read.csv2('fires.iberia.sel.BUI.csv')$REGION
+#regions <- readOGR('E:/Estancia_Lisboa/NUTS/NUTS3_Iberia.shp')
+datos$REGION <- cod_region
+datos <- na.omit(datos)
+
+#Recoding according to size intervals
+datos$SIZE <- factor(
+  cut(as.numeric(datos$BAREA),  c(0,10, 50, 100, 500, Inf)),
+  labels = c("<10","10-50","50-100","100-500",">500")
+)
+
+
+stratified_sample <- datos %>%
+  group_by(REGION) %>%
+  mutate(num_rows=n()) %>%
+  sample_frac(0.1, weight=num_rows) %>%
+  ungroup
+
+data.pca <- as.data.frame(stratified_sample[,8:15])
+group <- stratified_sample$REGION
+
+res.mgpca <- mgPCA(data.pca, group, Scale = TRUE, ncomp = 5)
+
+fire <- read.csv2('E:/Articulo_spei_large_fires/data.spei.csv')
+fire <- na.omit(fire)

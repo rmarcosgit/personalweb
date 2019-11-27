@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Javier Zubizarreta on Marcos Rodrigues</title>
+    <link>/authors/javier-zubizarreta/</link>
+    <description>Recent content in Javier Zubizarreta on Marcos Rodrigues</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Fri, 01 Jan 2010 00:00:00 +0100</lastBuildDate>
+    
+	<atom:link href="/authors/javier-zubizarreta/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>An estimation of the energy potential of agro-industrial residues in Spain</title>
+      <link>/publication/gomez-2010-estimation/</link>
+      <pubDate>Fri, 01 Jan 2010 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/gomez-2010-estimation/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Potential and cost of electricity generation from human and animal waste in Spain</title>
+      <link>/publication/gomez-2010-potential/</link>
+      <pubDate>Fri, 01 Jan 2010 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/gomez-2010-potential/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

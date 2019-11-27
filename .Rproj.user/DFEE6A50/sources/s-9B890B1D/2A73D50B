@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1550657693221.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "2A73D50B",
+    "lastKnownWriteTime" : 1539083435,
+    "last_content_update" : 1539083435,
+    "path" : "E:/Estancia_IDL/fires.port.R",
+    "project_path" : null,
+    "properties" : {
+        "cursorPosition" : "186,46",
+        "scrollLine" : "0"
+    },
+    "relative_order" : 4,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>M Rodrigues Mimbrero on Marcos Rodrigues</title>
+    <link>/authors/m-rodrigues-mimbrero/</link>
+    <description>Recent content in M Rodrigues Mimbrero on Marcos Rodrigues</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Thu, 01 Jan 2015 00:00:00 +0100</lastBuildDate>
+    
+	<atom:link href="/authors/m-rodrigues-mimbrero/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Land-use and land-cover dynamics monitored by NDVI multitemporal analysis in a selected southern Amazonian area (Brazil) for the last three decades</title>
+      <link>/publication/borini-2015-land/</link>
+      <pubDate>Thu, 01 Jan 2015 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/borini-2015-land/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

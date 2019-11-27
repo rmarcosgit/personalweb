@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Juan de la Riva on Marcos Rodrigues</title>
+    <link>/authors/juan-de-la-riva/</link>
+    <description>Recent content in Juan de la Riva on Marcos Rodrigues</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Mon, 01 Jan 2018 00:00:00 +0100</lastBuildDate>
+    
+	<atom:link href="/authors/juan-de-la-riva/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>A comprehensive spatial-temporal analysis of driving factors of human-caused wildfires in Spain using Geographically Weighted Logistic Regression</title>
+      <link>/publication/rodrigues-2018-comprehensive/</link>
+      <pubDate>Mon, 01 Jan 2018 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/rodrigues-2018-comprehensive/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Analysis of recent spatial--temporal evolution of human driving factors of wildfires in Spain</title>
+      <link>/publication/rodrigues-2016-analysis/</link>
+      <pubDate>Fri, 01 Jan 2016 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/rodrigues-2016-analysis/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>A method for regional-scale assessment of vegetation recovery time after high-severity wildfires: Case study of Spain</title>
+      <link>/publication/rodrigues-2014-method/</link>
+      <pubDate>Wed, 01 Jan 2014 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/rodrigues-2014-method/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>An insight into machine-learning algorithms to model human-caused wildfire occurrence</title>
+      <link>/publication/rodrigues-2014-insight/</link>
+      <pubDate>Wed, 01 Jan 2014 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/rodrigues-2014-insight/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Assessing the effect on fire risk modeling of the uncertainty in the location and cause of forest fires</title>
+      <link>/publication/rodrigues-2014-assessing/</link>
+      <pubDate>Wed, 01 Jan 2014 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/rodrigues-2014-assessing/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Integrating geospatial information into fire risk assessment</title>
+      <link>/publication/chuvieco-2014-integrating/</link>
+      <pubDate>Wed, 01 Jan 2014 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/chuvieco-2014-integrating/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Modeling the spatial variation of the explanatory factors of human-caused wildfires in Spain using geographically weighted logistic regression</title>
+      <link>/publication/rodrigues-2014-modeling/</link>
+      <pubDate>Wed, 01 Jan 2014 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/rodrigues-2014-modeling/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

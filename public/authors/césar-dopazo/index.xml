@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>César Dopazo on Marcos Rodrigues</title>
+    <link>/authors/c%C3%A9sar-dopazo/</link>
+    <description>Recent content in César Dopazo on Marcos Rodrigues</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sat, 01 Jan 2011 00:00:00 +0100</lastBuildDate>
+    
+	<atom:link href="/authors/c%C3%A9sar-dopazo/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>The technical potential of first-generation biofuels obtained from energy crops in Spain</title>
+      <link>/publication/gomez-2011-technical/</link>
+      <pubDate>Sat, 01 Jan 2011 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/gomez-2011-technical/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>The use of cost-generation curves for the analysis of wind electricity costs in Spain</title>
+      <link>/publication/fueyo-2011-use/</link>
+      <pubDate>Sat, 01 Jan 2011 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/fueyo-2011-use/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>An estimation of the energy potential of agro-industrial residues in Spain</title>
+      <link>/publication/gomez-2010-estimation/</link>
+      <pubDate>Fri, 01 Jan 2010 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/gomez-2010-estimation/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>High resolution modelling of the on-shore technical wind energy potential in Spain</title>
+      <link>/publication/fueyo-2010-high/</link>
+      <pubDate>Fri, 01 Jan 2010 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/fueyo-2010-high/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Potential and cost of electricity generation from human and animal waste in Spain</title>
+      <link>/publication/gomez-2010-potential/</link>
+      <pubDate>Fri, 01 Jan 2010 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/gomez-2010-potential/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Andrea Camia on Marcos Rodrigues</title>
+    <link>/authors/andrea-camia/</link>
+    <description>Recent content in Andrea Camia on Marcos Rodrigues</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Tue, 01 Jan 2013 00:00:00 +0100</lastBuildDate>
+    
+	<atom:link href="/authors/andrea-camia/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>An insight into spatial-temporal trends of fire ignitions and burned areas in the European Mediterranean countries</title>
+      <link>/publication/rodrigues-2013-insight/</link>
+      <pubDate>Tue, 01 Jan 2013 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/rodrigues-2013-insight/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Land cover change and fire regime in the European Mediterranean region</title>
+      <link>/publication/san-2012-land/</link>
+      <pubDate>Sun, 01 Jan 2012 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/san-2012-land/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

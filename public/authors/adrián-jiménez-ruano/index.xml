@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Adrián Jiménez-Ruano on Marcos Rodrigues</title>
+    <link>/authors/adri%C3%A1n-jim%C3%A9nez-ruano/</link>
+    <description>Recent content in Adrián Jiménez-Ruano on Marcos Rodrigues</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Tue, 01 Jan 2019 00:00:00 +0100</lastBuildDate>
+    
+	<atom:link href="/authors/adri%C3%A1n-jim%C3%A9nez-ruano/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Identifying wildfire-prone atmospheric circulation weather types on mainland Spain</title>
+      <link>/publication/rodrigues-2019-identifying/</link>
+      <pubDate>Tue, 01 Jan 2019 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/rodrigues-2019-identifying/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>A comprehensive spatial-temporal analysis of driving factors of human-caused wildfires in Spain using Geographically Weighted Logistic Regression</title>
+      <link>/publication/rodrigues-2018-comprehensive/</link>
+      <pubDate>Mon, 01 Jan 2018 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/rodrigues-2018-comprehensive/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>The role of short-term weather conditions in temporal dynamics of fire regime features in mainland Spain</title>
+      <link>/publication/jimenez-2018-role/</link>
+      <pubDate>Mon, 01 Jan 2018 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/jimenez-2018-role/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Understanding wildfires in mainland Spain. A comprehensive analysis of fire regime features in a climate-human context</title>
+      <link>/publication/jimenez-2017-understanding/</link>
+      <pubDate>Sun, 01 Jan 2017 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/jimenez-2017-understanding/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

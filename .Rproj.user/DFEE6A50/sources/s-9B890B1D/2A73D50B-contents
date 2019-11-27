@@ -1,0 +1,532 @@
+############## DAILY WEATHER DATA #############
+library(doParallel)
+library(rmatio)
+library(rmatio)
+library(ggplot2)
+library(viridis)
+library(rgdal)
+library(sp)
+library(raster)
+library(maptools)
+library(lattice)
+library(GISTools)
+library(tools)
+
+############## DEFINE FUNCTIONS ##############
+getData <-  function(x,fireData,days){
+  
+  fire <- fireData[which(row.names(fireData) %in% x),]
+  date <- fire$DATE
+  d <- floor(difftime(date,"1999-12-31"))
+  
+  return(mean(extract(dataset[[((d-days):d)]],
+                 fire[,3:4])))
+}
+
+q85 <- function(x){
+  q <- quantile(na.omit(x),0.85)
+  return(q)
+}
+
+q15 <- function(x){
+  q <- quantile(na.omit(x),0.55)
+  return(q)
+}
+
+
+################ BUILD WEATHER NCDF #############
+setwd('E:/Estancia_IDL/')
+
+coords <- data.frame(t(read.mat('lonlatEuropa.mat')))
+files <- list.files('DC/',full.names = TRUE)#[1:2]
+files.names <- file_path_sans_ext(basename(files))
+
+#n <- 1
+
+cl <- makeCluster(7)
+registerDoParallel(cl)
+
+#for(f in files){
+system.time(
+  results <- foreach(f=1:length(files), .packages=c("raster","sp","rgdal","rmatio")) %dopar% {
+    
+    data <- data.frame(t(read.mat(files[[f]])))
+    
+    
+    plot.data <- data.frame(cbind(unlist(coords$lonEuropa),
+                                  unlist(coords$latEuropa),
+                                  unlist(data[1])))
+    
+    names(plot.data) <- c('lon','lat','value')
+    plot.data[plot.data == 'NaN'] <- NA
+    
+    plot.data <- plot.data[plot.data$lon>-10 & plot.data$lon<4 & plot.data$lat > 36 & plot.data$lat<44,]
+    plot.data.sp <- na.omit(plot.data)
+    
+    coordinates(plot.data.sp) <- ~lon+lat
+    #crs(plot.data.sp) <-  "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84"
+    r <- raster()
+    extent(r) <- extent(plot.data.sp)
+    res(r) <- 0.11
+    rast2 <- rasterize(plot.data.sp, r, plot.data.sp$value) 
+    
+    r.brick <- brick(rast2)
+    
+    out <- list(r.brick= r.brick)
+    
+    return(out)
+  }
+  
+)
+
+stopCluster(cl)
+
+r.brick <- brick(unlist(results))
+names(r.brick) <- files.names
+plot(r.brick[[1]])
+writeRaster(r.brick,'dc.nc')
+#plot(unlist(results[[1]][[1]]))
+
+
+############# LOADING SPANISH FIRE DATA #############
+fires <- read.table('E:/Articulo_spei_large_fires/Data/fires.txt',header = TRUE, sep = "\t", dec = ",")
+cuad.region <- read.table("E:/articulo_fire_wind_temp/cuad.region.txt",
+                          header=TRUE,
+                          sep = "\t")
+
+#Extraer d?a y mes del campo fecha
+fires$MONTH <- substr(as.character(fires$DETECCION),4,5)
+fires$DAY <- substr(as.character(fires$DETECCION),1,2)
+fires$YEAR <- substr(as.character(fires$DETECCION),7,8)
+fires$YEAR <- as.numeric(c(paste("19",fires[1:(row.names(fires[fires$IDPIF=="2000020042",]))-1,]$YEAR,sep=""),
+                           paste("20",fires[(row.names(fires[fires$IDPIF=="2000020042",])):length(fires$IDPIF),]$YEAR,sep="")))
+
+# fires <- fires[fires$BAREA >= 12,]
+# fires <- fires[fires$YEAR >= 1979,]
+# row.names(fires) <- c(1:length(fires$IDPIF))
+
+#Assign coordinates according to grid cell
+cuad.pt <- readOGR('E:/Articulo_weather_types/CUAD_pt_wt.shp')
+cuad.pt.wgs84 <- spTransform(cuad.pt,CRSobj = "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84") 
+cuad <- cbind(cuad.pt@data,cuad.pt.wgs84@coords)
+fires.cuad <- merge(fires,cuad,by.x="CODCUAD",by.y="CUADUTM")
+fires.cuad$DATE <- as.Date(paste(fires.cuad$YEAR,fires.cuad$MONTH,fires.cuad$DAY, sep = "-")) #Crear un ID con la fecha 
+
+################## LOADING PORTUGESE FIRE DATA ########
+setwd('E:/Estancia_Lisboa/Fire_Data_Portugal/')
+
+files <- list.files(pattern = 'txt$')
+
+fires <- list()
+n <-1
+
+for(f in files){
+  
+  df <- read.table(f,
+                   header = TRUE,
+                   sep = "\t",
+                   dec = ',')
+  
+  if(n>1){
+    #print("Renaming")
+    names(df)<-names(fires[[1]])
+  }
+  
+  fires[[n]] <- df
+  n <- n+1
+}
+
+fires.port.all <- do.call(rbind.data.frame, fires)
+
+fires.port.all$INE2<-ifelse(nchar(as.character(fires.port.all$INE))<6,paste(0,fires.port.all$INE,sep=''),fires.port.all$INE)
+fires.port.all$ID <- row.names(fires.port.all)
+
+# library(rgdal)
+freg <- readOGR('../v620_freg.shp')
+trueCentroids = gCentroid(freg,byid=TRUE)
+freg.coords <- cbind(freg,trueCentroids@coords)
+fires.port.coord <- merge(fires.port.all,freg.coords,
+                          by.x = "INE2" , by.y = "DICOFRE")
+
+# freg$AREA <- area(freg) / 10000
+# #head(freg)
+# #freg <- fortify(freg, region = 'DICOFRE')
+# 
+# fires.all$BAREA <- as.numeric(fires.all[,16])
+# fires.all.freg.barea <- aggregate(BAREA ~ INE2, data = fires.all, FUN = sum)
+# fires.all.freg.counts <- aggregate( ID ~ INE2, data = fires.all, FUN =length)
+# 
+# freg.counts <- merge(freg, fires.all.freg.counts,
+#                      by.x = "DICOFRE" , by.y = "INE2")
+# #freg.counts <- freg.counts[order(freg.counts$order), ]
+# freg.counts$FireDens <- freg.counts$ID/freg.counts$AREA
+# is.na(freg.counts$FireDens) <- 0 
+# writeOGR(freg.counts,
+#          dsn = "E:/Estancia_Lisboa/Fire_Data_Portugal/fire.counts.shp",
+#          layer = "fire.counts",
+#          driver = 'ESRI Shapefile',
+#          overwrite_layer = TRUE)
+# 
+# freg.barea <- merge(freg, fires.all.freg.barea, 
+#                     by.x = "DICOFRE" , by.y = "INE2",
+#                     all = TRUE)
+#freg.barea <- freg.barea[order(freg.barea$order), ] 
+# freg.barea$BADens <- freg.barea$BAREA/freg.barea$AREA
+# is.na(freg.barea$BAREA) <- 0 
+# writeOGR(freg.barea,
+#          dsn = "E:/Estancia_Lisboa/Fire_Data_Portugal/fire.barea.shp",
+#          layer = "fire.barea",
+#          driver = 'ESRI Shapefile',
+#          overwrite_layer = TRUE)
+
+# library(ggplot2)
+# library(viridis)
+# 
+# ggplot() +
+#   geom_polygon(data = freg.counts, 
+#                aes(x = long, y = lat, group = group, fill = ID)) +
+#   scale_fill_viridis(option="plasma") +
+#   coord_equal() +
+#   theme_light() 
+# 
+# ggplot() +
+#   geom_polygon(data = freg.barea, 
+#                aes(x = long, y = lat, group = group, fill = BAREA)) +
+#   scale_fill_viridis(option="plasma") +
+#   coord_equal() +
+#   theme_light() 
+
+############## MERGE FIRES PORTUGAL & SPAIN #########
+fires.spain <- fires.cuad[fires.cuad$YEAR>2000,c(12,28,26,27)]
+fires.port <- fires.port.coord[,c(17,5,41,42)]
+names(fires.port) <- names(fires.spain)
+
+fires.iberia <- rbind(fires.spain,fires.port)
+names(fires.iberia)[3:4] <- c('lon','lat')
+row.names(fires.iberia) <- c(1:nrow(fires.iberia))
+
+fires.iberia$MONTH <- substr(as.character(fires.iberia$DATE),6,7)
+fires.iberia$DAY <- substr(as.character(fires.iberia$DATE),9,10)
+fires.iberia$YEAR <- substr(as.character(fires.iberia$DATE),1,4)
+
+############## EXTRACT WEATHER DATA ######################
+fires.iberia.sel <- read.csv2('E:/Estancia_IDL/fires.iberia.sel.csv')
+dataset <- brick('E:/Estancia_IDL/ncdf/temperature.nc')#r.brick
+
+# getData(1,fires.iberia)
+
+plot(dataset[[floor(difftime(fires.iberia[1,]$DATE,"2000-12-31"))]])
+points(fires.iberia[1,3:4],pch = 16)
+
+# size <- 1
+# 
+# fires.iberia.sel <- na.omit(fires.iberia[fires.iberia$BAREA>size,])
+# row.names(fires.iberia.sel) <- c(1:nrow(fires.iberia.sel))
+
+cl <- makeCluster(detectCores()-1)
+registerDoParallel(cl)
+
+w.data <- list()
+
+system.time(
+  
+  w.data <- foreach(f=1:nrow(fires.iberia.sel), 
+                         .packages=c("raster","rgdal")) %dopar% {
+    
+    d <- getData(f,fires.iberia.sel,7)
+    out <- list(f.data = d)
+    
+    return(out)
+  }
+  
+)
+
+# stopCluster(cl)
+
+w.data.all <- unlist(do.call(c,w.data))
+fires.iberia.sel$TEMP7d <- w.data.all
+
+write.csv2(fires.iberia.sel,'E:/Estancia_IDL/fires.iberia.sel_7d.csv',row.names = FALSE)
+
+############### ADD REGION DATA #############
+regions <- readOGR('E:/Estancia_Lisboa/NUTS/NUTS3_Iberia.shp')
+fires.iberia.sel <- read.csv2('fires.iberia.sel_.csv')
+spplot(regions,zcol="REGION")
+
+#Build percentile and background weather data
+months <- c('01','02','03','04','05','06','07','08','09','10','11','12')
+r.brick <- brick('E:/Estancia_IDL/ncdf/rainfall.nc')#r.brick
+files <- list.files('R///',full.names = TRUE)#[1:2]
+files.names <- file_path_sans_ext(basename(files))
+names(r.brick) <- files.names
+
+fwi.min <- list()#calc(r.brick.sel, min)
+fwi.max <- list()#calc(r.brick.sel, max)
+fwi.p85 <- list()#calc(r.brick.sel, q85)
+# fwi.mean <- list()#calc(r.brick.sel, q85)
+# fwi.sd <- list()#calc(r.brick.sel, q85)
+#rel.inc <- list()#1/(fwi.max-fwi.min)
+
+#PARALELIZAR ESTE BUCLE, TARDA MAS DE LO ESPERADO!!
+
+iteration <- 1
+
+#pb <- txtProgressBar(min = 0, max = length(ind), initial = 0) 
+
+for(m in months){
+  
+  #r.brick.sel <- r.brick[[which(substring(names(r.brick),8,9) %in% m)]]
+  r.brick.sel <- r.brick[[which(substring(names(r.brick),7,8) %in% m)]]
+  
+  fmin <- min(r.brick.sel)
+  fmax <- max(r.brick.sel)
+  # fmean <- mean(r.brick.sel)
+  # fsd <- calc(r.brick.sel, sd)
+  #fp85 <- calc(r.brick.sel, q85)
+  fp85 <- calc(r.brick.sel, q15)
+  #finc <- 1/(fmax-fmin)
+  
+  fwi.min[[iteration]] <- fmin
+  fwi.max[[iteration]] <- fmax
+  # fwi.mean[[iteration]] <- fmean
+  # fwi.sd[[iteration]] <- fsd
+  fwi.p85[[iteration]] <- fp85
+  #rel.inc[[iteration]] <- finc
+  
+  iteration <- iteration + 1
+  
+  #setTxtProgressBar(pb,i)
+  
+}
+
+r.p85 <- brick(unlist(fwi.p85))
+names(r.p85) <- months
+spplot(r.p85)
+# spplot(brick(unlist(fwi.mean)))
+# spplot(brick(unlist(fwi.sd)))
+
+# fwi.mean <- calc(r.brick.sel, mean)
+# plot(fwi.mean)
+
+#Select months
+fires.iberia.months <- list()
+
+iteration <- 1
+
+for(m in months){
+  
+  fires.iberia.sel.months <- fires.iberia.sel[substring(fires.iberia.sel$DATE,6,7) %in% m,]
+  fires.iberia.sel.spdf <- fires.iberia.sel.months
+  coordinates(fires.iberia.sel.spdf) <- ~lon+lat
+  crs(fires.iberia.sel.spdf) <- crs(regions)
+  sp.join <- over(x=fires.iberia.sel.spdf,y=regions)
+  
+  f <- cbind(fires.iberia.sel.months, sp.join[,c(2,3,6)])
+  f$p85 <- extract(fwi.p85[[iteration]],f[,c(3,4)])
+  f$min <- extract(fwi.min[[iteration]],f[,c(3,4)])
+  f$max <- extract(fwi.max[[iteration]],f[,c(3,4)])
+  #f$p.r.diff <- (f$RAIN - f$p85) * (1/(f$max - f$min)) * 100
+  f$p.r.diff <- (f$p85 - f$RAIN) * (1/(f$max - f$min)) * 100
+  
+  fires.iberia.months[[iteration]] <- f
+  
+  iteration <- iteration + 1
+  
+}
+
+#Check missing points later
+
+fires.iberia.months.df <- do.call(rbind,fires.iberia.months)
+fires.iberia.months.df$REGION = ordered(fires.iberia.months.df$REGION,
+                                       levels = c('SW','E','NW','N'))
+
+write.csv2(fires.iberia.months.df[,c(1:7,19,8,20,23)],"fires.iberia.sel.RAIN.csv",row.names = FALSE)
+
+
+bwplot(p.r.diff ~ REGION | factor(MONTH), data = fires.iberia.months.df)#fires.iberia.sel.months)
+xyplot(log(BAREA) ~ p.r.diff | REGION, data = fires.iberia.months.df)
+
+histogram( ~ factor(MONTH)|REGION, data = fires.iberia.months.df)
+histogram( ~ factor(MONTH)|REGION, data = fires.iberia.months.df,
+           type = c("count"))
+
+fires.iberia.barea <- aggregate(BAREA ~ MONTH + REGION, data = fires.iberia.months.df, FUN = sum)
+fires.iberia.barea.max <- aggregate(BAREA ~ MONTH + REGION, data = fires.iberia.months.df, FUN = max)
+fires.iberia.count<- aggregate(BAREA ~ MONTH + REGION, data = fires.iberia.months.df, FUN = length)
+fires.iberia.avgsize <-  fires.iberia.barea$BAREA/fires.iberia.count$BAREA
+
+fires.iberia.avgsize <- cbind(fires.iberia.barea[,1:2],fires.iberia.avgsize)
+names(fires.iberia.avgsize)[3] <- "AvgSize"
+
+barchart(BAREA ~ factor(MONTH) | REGION, data = fires.iberia.barea)
+barchart(BAREA ~ factor(MONTH) | REGION, data = fires.iberia.count)
+barchart(AvgSize ~ factor(MONTH) | REGION, data = fires.iberia.avgsize)
+barchart(log(BAREA) ~ factor(MONTH) | REGION, data = fires.iberia.barea.max)
+
+par(mfrow=c(1,3))
+hist(na.omit(fires.iberia.sel.months[fires.iberia.sel.months$BAREA > 500,]$FWI),
+     main = "Fires > 500 Ha", xlab = "FWI")
+hist(na.omit(fires.iberia.sel.months[fires.iberia.sel.months$BAREA > 100,]$FWI),
+     main = "Fires > 100 Ha", xlab = "FWI")
+hist(na.omit(fires.iberia.sel.months[fires.iberia.sel.months$BAREA > 10,]$FWI),
+     main = "Fires > 10 Ha", xlab = "FWI")
+
+par(mfrow=c(1,3))
+hist(na.omit(fires.iberia.sel.months[fires.iberia.sel.months$BAREA > 500,]$p.r.diff),
+     main = "Fires > 500 Ha", xlab = "FWI")
+hist(na.omit(fires.iberia.sel.months[fires.iberia.sel.months$BAREA > 100,]$p.r.diff),
+     main = "Fires > 100 Ha", xlab = "FWI")
+hist(na.omit(fires.iberia.sel.months[fires.iberia.sel.months$BAREA > 10,]$p.r.diff),
+     main = "Fires > 10 Ha", xlab = "FWI")
+
+xyplot(FWI ~ p.r.diff | REGION, data = fires.iberia.sel.months)
+
+####################################################
+
+#Log BAREA ~ FWI correlation
+cor.test(na.omit(fires.iberia.months.df)$p.r.diff, log(na.omit(fires.iberia.months.df)$BAREA))
+
+library(plyr)
+
+correl <- ddply(na.omit(fires.iberia.months.df), .(REGION,MONTH), summarise,
+      corr=(cor.test(log(BAREA), p.r.diff,
+                     alternative="two.sided", method="pearson")), name=names(corr) )
+
+for(r in unique(correl$REGION)){
+  print(correl[correl$REGION == r & correl$name %in% c('estimate'),])
+}
+for(r in unique(correl$REGION)){
+  print(correl[correl$REGION == r & correl$name %in% c('p.value'),])
+}
+
+correl <- ddply(na.omit(fires.iberia.months.df), .(REGION,MONTH), summarise,
+                corr=(cor.test(log(BAREA), FWI,
+                               alternative="two.sided", method="spearman")), name=names(corr) )
+
+for(r in unique(correl$REGION)){
+  print(correl[correl$REGION == r & correl$name %in% c('estimate'),])
+}
+for(r in unique(correl$REGION)){
+  print(correl[correl$REGION == r & correl$name %in% c('p.value'),])
+}
+
+
+d.fwi.plot <- ggplot(data = na.omit(fires.iberia.months.df[fires.iberia.months.df$BAREA>1,]),
+       aes(x = p.r.diff, y = log(BAREA))) +
+  geom_hex() +
+  scale_fill_viridis(trans = "log", breaks = c(1,10,100)) +
+  geom_vline(xintercept = 0) +
+  geom_vline(xintercept = -25, lty = 2) +
+  geom_hline(yintercept = log(500)) +
+  #geom_hline(yintercept = log(100), lty =2 ) +
+  geom_hline(yintercept = log(10), lty =2 ) +
+  geom_smooth(method='loess',formula=y~x, color = "red", lwd = 0.8) +
+  facet_grid(REGION ~ MONTH) +
+  theme_minimal() +
+  theme(legend.position="none")
+
+ggsave('E:/Estancia_IDL/d.fwi.png',d.fwi.plot,width = 12, height = 6)
+
+fwi.plot <- ggplot(data = na.omit(fires.iberia.months.df[fires.iberia.months.df$BAREA>1,]),
+       aes(x = FWI, y = log(BAREA))) +
+  geom_hex() +
+  scale_fill_viridis(trans = "log", breaks = c(1,10,100)) +
+  geom_vline(xintercept = 0) +
+  geom_vline(xintercept = 20, lty = 2) +
+  geom_hline(yintercept = log(500)) +
+  #geom_hline(yintercept = log(100), lty =2 ) +
+  geom_hline(yintercept = log(10), lty =2 ) +
+  geom_smooth(method='loess',formula=y~x, color = "red", lwd = 0.8) +
+  facet_grid(REGION ~ MONTH) +
+  theme_minimal() +
+  theme(legend.position="none")
+
+ggsave('E:/Estancia_IDL/fwi.png',fwi.plot,width = 12, height = 6)
+
+
+pdf = fires.iberia.months.df %>% group_by(REGION,MONTH) %>% arrange(p.r.diff) %>% mutate(cs = cumsum(BAREA))
+
+ggplot()+
+  geom_line(data = na.omit(pdf), 
+            aes(x=p.r.diff,y=log(cs),
+                color = REGION)) +
+  #geom_area(data = na.omit(fires.iberia.cs), aes(x=diff,y=cs.barea), stat = "identity") +
+  facet_grid(REGION ~ MONTH) +
+  geom_vline(xintercept = 0) +
+  geom_vline(xintercept = -25, lty = 2) +
+  geom_hline(yintercept = 0) +
+  theme_minimal() +
+  theme(legend.position="none")
+
+pdf2 = fires.iberia.months.df %>% group_by(MONTH,REGION) %>% arrange(BAREA) %>% mutate(cs = cumsum(BAREA),c.diff = cummean(p.r.diff))
+
+ggplot()+
+  geom_vline(xintercept = 0, color = "darkgrey") +
+  geom_line(data = na.omit(pdf2), 
+            aes(x=log(BAREA),y=c.diff,
+                color = REGION), lwd = 0.8) +
+  scale_x_continuous(limits = c(0,log(max(pdf2$cs)))) +
+  #geom_area(data = na.omit(fires.iberia.cs), aes(x=diff,y=cs.barea), stat = "identity") +
+  facet_grid(REGION ~ MONTH) +
+  geom_vline(xintercept = log(500), lty = 2) +
+  geom_hline(yintercept = -25, lty = 2) +
+  geom_hline(yintercept = 0) +
+  theme_minimal() +
+  theme(legend.position="none")
+
+#plot(diff, cs.barea)
+
+ggplot(data = na.omit(fires.iberia.months.df),
+       aes(x = FWI, y = log(BAREA))) +
+  geom_hex() +
+  scale_fill_viridis(trans = "log", breaks = c(1,10,100)) +
+  geom_vline(xintercept = 21.3) +
+  geom_vline(xintercept = 38) +
+  geom_vline(xintercept = 50) +
+  geom_hline(yintercept = log(500)) +
+  geom_hline(yintercept = log(100), lty =2 ) +
+  geom_hline(yintercept = log(10), lty =3 ) +
+  facet_grid(MONTH ~ REGION) +
+  theme_minimal()
+
+############################
+require(plyr)
+
+data1d <- na.omit(read.delim2('E:/Estancia_IDL/data_1day_p85-P.txt',header = T,
+                     sep = '\t', dec = ','))
+
+data1d$SIZE <- factor(
+  cut(data1d$BAREA,c(0,10,100,Inf)),
+  labels = c("Small","Medium","Large"))
+
+data1d$GROUP <- paste(data1d$REGION,data1d$SIZE)
+
+func <- function(d){
+  return(data.frame(COR = round(cor.test(d$BAREA,d$RH)$estimate,2), 
+         PVALUE = round(cor.test(d$BAREA,d$RH)$p.value,2)))
+}
+
+ddply(data1d, .(REGION),func)
+
+data.pca <- data.frame(data1d[,c(9:11,13:28)])
+group <- data1d$REGION
+res.mgpca <- mgPCA(data.pca, group, Scale = TRUE, ncomp = 20)
+
+
+model <- bam(log(BAREA)~s(DC, by=REGION) +
+               # te(RAIN, by=GROUP) +
+               # te(FWI, by=GROUP) +
+               s(FFMC, by=REGION) +
+               s(ISI, by=REGION) ,
+               #s(RH, by=REGION),
+             #family = nb(),
+             data=data1d)
+summary(model)
+
+modelFWI <- bam(BAREA~te(FWI, by=REGION), 
+             #family = nb(),
+             data=data1d)
+
+modelFWI_g <- bam(BAREA~te(FWI), 
+                #family = nb(),
+                data=data1d)

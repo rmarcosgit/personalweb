@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Forest management on Marcos Rodrigues</title>
+    <link>/tags/forest-management/</link>
+    <description>Recent content in Forest management on Marcos Rodrigues</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Wed, 27 Apr 2016 00:00:00 +0200</lastBuildDate>
+    
+	<atom:link href="/tags/forest-management/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>CLIMARK</title>
+      <link>/project/climark/</link>
+      <pubDate>Wed, 27 Apr 2016 00:00:00 +0200</pubDate>
+      
+      <guid>/project/climark/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>IMAGINE</title>
+      <link>/project/imagine/</link>
+      <pubDate>Wed, 27 Apr 2016 00:00:00 +0200</pubDate>
+      
+      <guid>/project/imagine/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>SERGISAT</title>
+      <link>/project/sergisat/</link>
+      <pubDate>Wed, 27 Apr 2016 00:00:00 +0200</pubDate>
+      
+      <guid>/project/sergisat/</guid>
+      <description>PROJECT GOAL Build a model to estimate the post-fire regeneration after large fire. The aim is to analyze different patterns of regeneration at different levels of burn severity, using burned areas with comparable biophysical characteristics as study cases.</description>
+    </item>
+    
+  </channel>
+</rss>

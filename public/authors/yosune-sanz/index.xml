@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Yosune Sanz on Marcos Rodrigues</title>
+    <link>/authors/yosune-sanz/</link>
+    <description>Recent content in Yosune Sanz on Marcos Rodrigues</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sat, 01 Jan 2011 00:00:00 +0100</lastBuildDate>
+    
+	<atom:link href="/authors/yosune-sanz/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>The use of cost-generation curves for the analysis of wind electricity costs in Spain</title>
+      <link>/publication/fueyo-2011-use/</link>
+      <pubDate>Sat, 01 Jan 2011 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/fueyo-2011-use/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>High resolution modelling of the on-shore technical wind energy potential in Spain</title>
+      <link>/publication/fueyo-2010-high/</link>
+      <pubDate>Fri, 01 Jan 2010 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/fueyo-2010-high/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

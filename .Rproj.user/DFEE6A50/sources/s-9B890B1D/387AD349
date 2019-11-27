@@ -1,0 +1,20 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1550657663895.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1028906399",
+    "id" : "387AD349",
+    "lastKnownWriteTime" : 1537456661,
+    "last_content_update" : 1537456661,
+    "path" : "E:/Estancia_IDL/multigroupPCA.R",
+    "project_path" : null,
+    "properties" : {
+    },
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

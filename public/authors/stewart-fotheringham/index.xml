@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Stewart Fotheringham on Marcos Rodrigues</title>
+    <link>/authors/stewart-fotheringham/</link>
+    <description>Recent content in Stewart Fotheringham on Marcos Rodrigues</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Wed, 01 Jan 2014 00:00:00 +0100</lastBuildDate>
+    
+	<atom:link href="/authors/stewart-fotheringham/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Modeling the spatial variation of the explanatory factors of human-caused wildfires in Spain using geographically weighted logistic regression</title>
+      <link>/publication/rodrigues-2014-modeling/</link>
+      <pubDate>Wed, 01 Jan 2014 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/rodrigues-2014-modeling/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

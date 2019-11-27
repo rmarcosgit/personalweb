@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1551250236719.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "C41DC948",
+    "lastKnownWriteTime" : 1551511220,
+    "last_content_update" : 1551511220,
+    "path" : "E:/SERGISAT/exploratorio.R",
+    "project_path" : null,
+    "properties" : {
+        "cursorPosition" : "488,0",
+        "scrollLine" : "0",
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 7,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

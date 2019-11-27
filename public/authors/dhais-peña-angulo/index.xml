@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Dhais Peña-Angulo on Marcos Rodrigues</title>
+    <link>/authors/dhais-pe%C3%B1a-angulo/</link>
+    <description>Recent content in Dhais Peña-Angulo on Marcos Rodrigues</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Tue, 01 Jan 2019 00:00:00 +0100</lastBuildDate>
+    
+	<atom:link href="/authors/dhais-pe%C3%B1a-angulo/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Identifying wildfire-prone atmospheric circulation weather types on mainland Spain</title>
+      <link>/publication/rodrigues-2019-identifying/</link>
+      <pubDate>Tue, 01 Jan 2019 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/rodrigues-2019-identifying/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>A comprehensive spatial-temporal analysis of driving factors of human-caused wildfires in Spain using Geographically Weighted Logistic Regression</title>
+      <link>/publication/rodrigues-2018-comprehensive/</link>
+      <pubDate>Mon, 01 Jan 2018 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/rodrigues-2018-comprehensive/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

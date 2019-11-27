@@ -1,0 +1,220 @@
+library(reshape)
+library(dplyr)
+library(plyr)
+library(nortest)
+
+setwd('E:/Isida_PhD/')
+
+data <- read.delim2('measurements.txt')
+
+cor.test(data$GR_avrgphoto,data$GR_avrgLiDAR)
+cor.test(data$SHR_avrgphoto,data$SHR_avrgLiDAR)
+
+shapiro.test(data$GR_avrgphoto)
+shapiro.test(data$SHR_avrgphoto)
+shapiro.test(data$GR_avrgLiDAR)
+shapiro.test(data$SHR_avrgLiDAR)
+
+ddply(data, .(GROUPED_FT_classes), summarise,
+      corr=(cor.test(GR_avrgphoto, GR_avrgLiDAR,
+                     alternative="two.sided", method = "pearson"))[4:3], name=names(corr) )
+
+
+ddply(data, .(GROUPED_FT_classes), summarise,
+      corr=(cor.test(SHR_avrgphoto, SHR_avrgLiDAR,
+                     alternative="two.sided", method = "pearson"))[4:3], name=names(corr) )
+
+library(ggplot2)
+library(RColorBrewer)
+
+n <- 0.01
+classes <- as.character(unique(data$GROUPED_FT_classes))
+colourCount = length(classes)
+cols = as.character(brewer.pal(colourCount, "Set1"))
+
+v <- c("G5" = cols[1],
+       "G1-3" = cols[2],
+       "SH2-3-4-5" = cols[3],
+       "GSH1-2" = cols[4],
+       "G4" = cols[5],
+       "TU2-3-4" = cols[6],
+       "TL-TU1" = cols[7])
+
+gr <- ggplot(data = data[data$GR_avrgLiDAR>0,], 
+       aes(x=GR_avrgLiDAR, y=GR_avrgphoto, color = GROUPED_FT_classes)) +
+  scale_color_manual(name = '', values = v) +
+  geom_abline(intercept = 0, slope = 1, lty=2) +
+  labs(y=expression(Height[P](m)),x=expression(Height[L](m))) +
+  geom_point(pch=16)+
+  coord_equal()+
+  guides(colour = guide_legend(nrow = 1))+
+  scale_x_continuous(limits = c(0,5),expand = c(n, n)) + 
+  scale_y_continuous(limits = c(0,5),expand = c(n, n))+
+  ggtitle('Grassland measurements') +
+  theme_bw() +
+  theme(legend.position = 'bottom',
+        panel.grid.minor = element_blank(),
+        plot.title = element_text(hjust = 0.5))
+
+ggsave('scatter_gr.png',gr,width = 5,height = 5)
+
+shr <- ggplot(data = data[data$SHR_avrgLiDAR>0,], 
+       aes(x=SHR_avrgLiDAR, y=SHR_avrgphoto, color = GROUPED_FT_classes)) +
+  #scale_color_brewer(name = '',palette = 'Set1') +
+  scale_color_manual(name = '', values = v) +
+  geom_abline(intercept = 0, slope = 1, lty=2) +
+  labs(y=expression(Height[P](m)),x=expression(Height[L](m))) +
+  geom_point(pch=16)+
+  coord_equal()+
+  guides(colour = guide_legend(nrow = 1))+
+  scale_x_continuous(limits = c(0,5),expand = c(n, n)) + 
+  scale_y_continuous(limits = c(0,5),expand = c(n, n))+
+  ggtitle('Shrubland measurements') +
+  theme_bw() +
+  theme(legend.position = 'bottom',
+        panel.grid.minor = element_blank(),
+        plot.title = element_text(hjust = 0.5))
+
+ggsave('scatter_shr.png',shr,width = 5,height = 5)
+
+library(rpart)
+library(rpart.plot)
+library(fmsb)
+library(randomForest)
+library(dismo)
+
+models <- list()
+accuracy <- list()
+kappa <- list()
+c.table <- list()
+#----------------------
+models.l <- list()
+accuracy.l <- list()
+kappa.l <- list()
+c.table.l <- list()
+
+iteration <- 1
+nModels <- 300
+ms <- 5
+nt <- 500
+mt <- 2
+
+for(i in 1:nModels){
+  
+  nfolds <- 3
+  k = kfold(data, k=nfolds)
+  
+  for(fold in 1:nfolds){
+    
+    cal.sample <- which(k == fold)#sample(nrow(data), size = floor(nrow(data)*0.2))
+    data.train <-data[-cal.sample,]
+    data.test <-data[cal.sample,]
+    
+    tree<-rpart(GROUPED_FT_classes ~ GR_avrgphoto + SHR_avrgphoto + TR_COVER,
+                data=data.train, method="class",
+                control=rpart.control(minsplit=ms, cp=0.003))
+
+    tree.pruned <- prune(tree, cp=  tree$cptable[which.min(tree$cptable[,"xerror"]),"CP"])
+
+
+    # tree.pruned <- randomForest(GROUPED_FT_classes ~ GR_avrgphoto + SHR_avrgphoto + TR_COVER,
+    #                                          data=data.train,ntree=nt,mtry=mt)
+    models[[iteration]] <- tree.pruned#prune(tree, cp=tree$cptable[which.min(tree$cptable[,"xerror"]),"CP"])
+    
+    tree.pruned.pred<-predict(tree.pruned,data.test,type="class")
+    
+    fit.table <- table(data.test$GROUPED_FT_classes,tree.pruned.pred)
+    accuracy[[iteration]] <- sum(diag(fit.table))/sum(fit.table)
+    kappa[[iteration]] <- Kappa.test(fit.table)[[1]]$estimate
+    
+    c.table[[iteration]] <- fit.table
+    
+    tree<-rpart(GROUPED_FT_classes ~ GR_avrgLiDAR + SHR_avrgLiDAR + TR_COVER,
+                data=data.train, method="class",
+                control=rpart.control(minsplit=ms, cp=0.003))
+
+    tree.pruned <- prune(tree, cp=  tree$cptable[which.min(tree$cptable[,"xerror"]),"CP"])
+
+    # tree.pruned <- randomForest(GROUPED_FT_classes ~ GR_avrgLiDAR + SHR_avrgLiDAR + TR_COVER,
+                                # data=data.train,ntree=nt,mtry=mt)
+    
+    models.l[[iteration]] <- tree.pruned#prune(tree, cp=tree$cptable[which.min(tree$cptable[,"xerror"]),"CP"])
+    
+    tree.pruned.pred<-predict(tree.pruned,data.test,type="class")
+    
+    fit.table <- table(data.test$GROUPED_FT_classes,tree.pruned.pred)
+    accuracy.l[[iteration]] <- sum(diag(fit.table))/sum(fit.table)
+    kappa.l[[iteration]] <- Kappa.test(fit.table)[[1]]$estimate
+    
+    c.table.l[[iteration]] <- fit.table
+    
+    # print(accuracy[[iteration]])
+    # print(accuracy.l[[iteration]])
+    # print(paste('..............'))
+    
+    iteration <- iteration + 1
+    
+  }
+}
+
+mean(unlist(accuracy))
+mean(unlist(accuracy.l))
+
+Reduce('+', c.table)
+
+val.results <- as.data.frame(cbind(unlist(kappa), unlist(accuracy)))
+names(val.results) <- c("Kappa","Accuracy")
+
+val.results <- melt(val.results)
+
+Min <- 0.2
+Max <- 0.8
+
+hist.p <- ggplot(data=val.results, aes(x=value)) + 
+  geom_histogram(color='darkgrey', fill='lightgrey', binwidth = 0.02) +
+  facet_wrap(~variable) +
+  geom_vline(data=filter(val.results, variable=="Kappa"), 
+             aes(xintercept=mean(unlist(kappa))), colour="red", lty=2) +
+  geom_vline(data=filter(val.results, variable=="Accuracy"), 
+             aes(xintercept=mean(unlist(accuracy))), colour="red", lty=2) +
+  scale_x_continuous(name='',limits = c(Min,Max),expand = c(n, n)) +
+  scale_y_continuous(name='',limits = c(0,200),expand = c(n, n)) +
+  ggtitle('Picture-based model') +
+  theme_bw() +
+  theme(legend.position = 'bottom',
+        panel.grid.minor = element_blank(),
+        plot.title = element_text(hjust = 0.5))
+hist.p
+ggsave('accuracy_pictures.png',hist.p,width = 6,height = 3.5)
+
+Reduce('+', c.table.l)
+
+val.results.l <- as.data.frame(cbind(unlist(kappa.l), unlist(accuracy.l)))
+names(val.results.l) <- c("Kappa","Accuracy")
+
+val.results.l <- melt(val.results.l)
+
+hist.l <- ggplot(data=val.results.l, aes(x=value)) + 
+  geom_histogram(color='darkgrey', fill='lightgrey', binwidth = 0.02) +
+  facet_wrap(~variable) +
+  geom_vline(data=filter(val.results, variable=="Kappa"), 
+             aes(xintercept=mean(unlist(kappa.l))), colour="red", lty=2) +
+  geom_vline(data=filter(val.results, variable=="Accuracy"), 
+             aes(xintercept=mean(unlist(accuracy.l))), colour="red", lty=2) +
+  scale_x_continuous(name='',limits =  c(Min,Max),expand = c(n, n)) +
+  scale_y_continuous(name='',limits = c(0,200),expand = c(n, n)) +
+  ggtitle('LiDAR-based model') +
+  theme_bw() +
+  theme(legend.position = 'bottom',
+        panel.grid.minor = element_blank(),
+        plot.title = element_text(hjust = 0.5))
+hist.l
+ggsave('accuracy_lidar.png',hist.l,width = 6,height = 3.5)
+
+# rpart.plot(models[[1]],type = 2, clip.right.labs = FALSE, 
+#            branch = .3, under = TRUE,box.palette = c("pink", "palegreen3"))
+# png('tree.png',width = 1200, height = 1000, pointsize = 50)
+# prp(models[[1]], extra = 2, type = 1,
+#     box.col = as.character(brewer.pal(colourCount, "PRGn")))
+# dev.off()
+#     

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Yago Martıín on Marcos Rodrigues</title>
+    <link>/authors/yago-mart%C4%B1%C3%ADn/</link>
+    <description>Recent content in Yago Martıín on Marcos Rodrigues</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Tue, 01 Jan 2019 00:00:00 +0100</lastBuildDate>
+    
+	<atom:link href="/authors/yago-mart%C4%B1%C3%ADn/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Modelling temporal variation of fire-occurrence towards the dynamic prediction of human wildfire ignition danger in northeast Spain</title>
+      <link>/publication/martin-2019-modelling/</link>
+      <pubDate>Tue, 01 Jan 2019 00:00:00 +0100</pubDate>
+      
+      <guid>/publication/martin-2019-modelling/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>
